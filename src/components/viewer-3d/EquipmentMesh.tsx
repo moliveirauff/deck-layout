@@ -25,8 +25,19 @@ function EquipMaterial({ color, wireframe, opacity = 1 }: { color: string; wiref
       wireframe={wireframe}
       transparent={opacity < 1}
       opacity={opacity}
+      roughness={0.8}
+      metalness={0.2}
     />
   )
+}
+
+function getColorForId(id: string) {
+  const colors = ['#eab308', '#3b82f6', '#ef4444', '#10b981', '#f97316', '#8b5cf6', '#06b6d4']
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return colors[Math.abs(hash) % colors.length]
 }
 
 export function EquipmentMesh({ pe, eq, viewMode, showLabels }: Props) {
@@ -46,6 +57,8 @@ export function EquipmentMesh({ pe, eq, viewMode, showLabels }: Props) {
   const showOb     = (viewMode === 'overboard' || viewMode === 'both') && hasOverboard
   const ghostDeck  = viewMode === 'both' && hasOverboard
 
+  const color = getColorForId(pe.equipment_id)
+
   return (
     <group>
       {/* Deck position */}
@@ -53,7 +66,7 @@ export function EquipmentMesh({ pe, eq, viewMode, showLabels }: Props) {
         <group position={deckPos} rotation={[0, rotY, 0]}>
           <mesh castShadow>
             <EquipGeometry eq={eq} />
-            <EquipMaterial color="#22aa44" wireframe={ghostDeck} opacity={ghostDeck ? 0.4 : 1} />
+            <EquipMaterial color={color} wireframe={ghostDeck} opacity={ghostDeck ? 0.4 : 1} />
           </mesh>
           {showLabels && !ghostDeck && (
             <Html position={[0, h2 + 0.8, 0]} center distanceFactor={50}>
@@ -70,7 +83,7 @@ export function EquipmentMesh({ pe, eq, viewMode, showLabels }: Props) {
         <group position={obPos}>
           <mesh castShadow>
             <EquipGeometry eq={eq} />
-            <EquipMaterial color="#22aa44" />
+            <EquipMaterial color={color} />
           </mesh>
           {showLabels && (
             <Html position={[0, h2 + 0.8, 0]} center distanceFactor={50}>
@@ -99,3 +112,4 @@ export function EquipmentMesh({ pe, eq, viewMode, showLabels }: Props) {
     </group>
   )
 }
+

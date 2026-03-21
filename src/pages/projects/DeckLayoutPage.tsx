@@ -140,6 +140,8 @@ export default function DeckLayoutPage() {
                 deckInfo={craneDeckInfo}
                 overboardInfo={craneOverboardInfo}
                 onOverboardChange={handleOverboardMove}
+                craneCurve={craneCurve}
+                vessel={vessel!}
               />
             </div>
           )}

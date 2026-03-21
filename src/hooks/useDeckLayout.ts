@@ -101,11 +101,12 @@ export function useDeckLayout() {
     if (!vessel) return null
     const radiusM = calculateCraneRadius(vessel.crane_pedestal_x, vessel.crane_pedestal_y, targetX, targetY)
     const boomAngleDeg = calculateBoomAngle(radiusM, vessel.crane_boom_length_m)
-    const capacityT = interpolateCraneCurve(craneCurve, radiusM)
+    const capacityT = interpolateCraneCurve(craneCurve, radiusM, vessel.crane_min_radius_m ?? undefined)
     const slewDeg = calculateSlewAngle(vessel.crane_pedestal_x, vessel.crane_pedestal_y, targetX, targetY)
     const slewOk = isSlewInRange(slewDeg, vessel.crane_slew_min_deg, vessel.crane_slew_max_deg)
     const maxR = craneCurve.length > 0 ? craneCurve[craneCurve.length - 1].radius_m : vessel.crane_boom_length_m
-    const reachOk = radiusM <= maxR
+    const minR = vessel.crane_min_radius_m ?? 0
+    const reachOk = radiusM <= maxR && radiusM >= minR
     const capacityOk = capacityT >= weightT
     const utilizationPct = capacityT > 0 ? (weightT / capacityT) * 100 : 100
     return { radiusM, boomAngleDeg, capacityT, weightT, utilizationPct, slewDeg, slewOk, reachOk, capacityOk, ok: slewOk && reachOk && capacityOk }

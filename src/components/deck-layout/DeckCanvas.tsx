@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useMemo } from 'react'
-import { Stage, Layer, Rect, Ellipse, Circle, Line, Arrow, Text, Shape, Group } from 'react-konva'
+import { Stage, Layer, Rect, Ellipse, Circle, Line, Arrow, Text, Shape, Group, Path, Arc } from 'react-konva'
 import { useDeckTransform } from '../../hooks/useDeckTransform'
 import type { VesselBarrier, DeckLoadZone, CraneCurvePoint, Vessel, ProjectEquipment, EquipmentLibrary } from '../../types/database'
 import type { ValidationResult } from '../../lib/calculations/deckValidation'
@@ -8,7 +8,6 @@ import type { CraneInfo } from '../../hooks/useDeckLayout'
 
 export type DeckCanvasHandle = { zoomIn: () => void; zoomOut: () => void; fit: () => void }
 
-const WATER_PAD = 20 // meters of water shown around deck
 
 type Props = {
   vessel: Vessel | null
@@ -81,6 +80,7 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
   const pY = vessel?.crane_pedestal_y ?? 0
   const sMin = vessel?.crane_slew_min_deg ?? 0
   const sMax = vessel?.crane_slew_max_deg ?? 360
+  const minR = vessel?.crane_min_radius_m ?? 0
 
   const selectedItem = placed.find((p) => p.id === selectedId)
   const showOverboard = craneToggle === 'overboard' || craneToggle === 'both'
@@ -105,25 +105,30 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
     onDrop(equipId, (sx - ox) / bs, deckW - (sy - oy) / bs)
   }
 
+  // SVG path string for realistic hull
+  const hullPathData = useMemo(() => {
+    if (deckL <= 0 || deckW <= 0) return ''
+    const straightEnd = deckL * 0.8
+    return `M ${wx(0)} ${wy(0)} L ${wx(0)} ${wy(deckW)} L ${wx(straightEnd)} ${wy(deckW)} L ${wx(deckL)} ${wy(deckW / 2)} L ${wx(straightEnd)} ${wy(0)} Z`
+  }, [deckL, deckW, wx, wy])
+
   return (
-    <div ref={containerRef} className="h-full w-full overflow-hidden bg-gray-50" onDragOver={(e) => e.preventDefault()} onDrop={handleCanvasDrop}>
+    <div ref={containerRef} className="h-full w-full overflow-hidden bg-blue-300" onDragOver={(e) => e.preventDefault()} onDrop={handleCanvasDrop}>
       <Stage ref={stageRef} width={size.w} height={size.h} draggable onWheel={handleWheel}
         onClick={(e) => { if (e.target === e.target.getStage()) onSelect(null) }}>
         <Layer>
-          {/* Water area (light blue, extends 20m around deck) */}
-          {deckL > 0 && showOverboard && (
-            <Rect
-              x={wx(-WATER_PAD)} y={wy(deckW + WATER_PAD)}
-              width={(deckL + WATER_PAD * 2) * bs} height={(deckW + WATER_PAD * 2) * bs}
-              fill="rgba(147,197,253,0.3)" listening={false}
-            />
-          )}
+          {/* Ocean Background - infinite blue */}
+          <Rect
+            x={-5000} y={-5000}
+            width={10000} height={10000}
+            fill="#93c5fd" listening={false}
+          />
 
           {/* Grid */}
           {gridLines.map((pts, i) => <Line key={i} points={pts} stroke="#e5e7eb" strokeWidth={0.5} listening={false} />)}
 
-          {/* Deck */}
-          {deckL > 0 && <Rect x={wx(0)} y={wy(deckW)} width={deckL * bs} height={deckW * bs} fill="#d1d5db" stroke="#374151" strokeWidth={2} listening={false} />}
+          {/* Realistic Hull */}
+          {deckL > 0 && <Path data={hullPathData} fill="#e2e8f0" stroke="#374151" strokeWidth={2} listening={false} shadowColor="black" shadowBlur={15} shadowOpacity={0.2} shadowOffset={{x: 0, y: 5}} />}
 
           {/* Load zones */}
           {zones.map((z) => <Group key={z.id} listening={false}>
@@ -133,7 +138,7 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
 
           {/* Barriers */}
           {barriers.map((b) => <Group key={b.id} listening={false}>
-            <Rect x={wx(b.x_m)} y={wy(b.y_m + b.width_m)} width={b.length_m * bs} height={b.width_m * bs} fill="rgba(239,68,68,0.3)" stroke="#dc2626" strokeWidth={1} />
+            <Rect x={wx(b.x_m)} y={wy(b.y_m + b.width_m)} width={b.length_m * bs} height={b.width_m * bs} fill="rgba(239,68,68,0.4)" stroke="#b91c1c" strokeWidth={1.5} dash={[4, 4]} />
             <Text x={wx(b.x_m) + 3} y={wy(b.y_m + b.width_m) + 3} text={b.name} fontSize={fz} fill="#991b1b" />
           </Group>)}
 
@@ -150,14 +155,22 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
             const fill = bad ? 'rgba(239,68,68,0.55)' : 'rgba(34,197,94,0.55)'
             const stroke = sel ? '#2563eb' : bad ? '#dc2626' : '#16a34a'
             const sw = sel ? 2.5 : 1.5
+            const capacityOk = pe.id === selectedId ? activeCraneInfo?.ok ?? true : true
+            const isEqOk = vr?.ok !== false && capacityOk
+
             return (
               <Group key={pe.id} x={cx} y={cy} rotation={pe.deck_rotation_deg} draggable opacity={opacity}
                 onClick={() => onSelect(pe.id)}
                 onDragEnd={(e) => { onMove(pe.id, (e.target.x() - ox) / bs, deckW - (e.target.y() - oy) / bs) }}>
                 {eq.geometry_type === 'cylinder'
-                  ? <Ellipse radiusX={lPx / 2} radiusY={wPx / 2} fill={fill} stroke={stroke} strokeWidth={sw} />
-                  : <Rect x={-lPx / 2} y={-wPx / 2} width={lPx} height={wPx} fill={fill} stroke={stroke} strokeWidth={sw} />}
-                <Text text={pe.label ?? eq.name} fontSize={Math.max(6, Math.min(10, bs * 0.75))} fill="#1f2937" x={-lPx / 2 + 2} y={-wPx / 2 + 2} />
+                  ? <Ellipse radiusX={lPx / 2} radiusY={wPx / 2} fill={fill} stroke={stroke} strokeWidth={sw} shadowColor="black" shadowBlur={5} shadowOpacity={0.3} shadowOffset={{x: 2, y: 2}} />
+                  : <Rect x={-lPx / 2} y={-wPx / 2} width={lPx} height={wPx} fill={fill} stroke={stroke} strokeWidth={sw} shadowColor="black" shadowBlur={5} shadowOpacity={0.3} shadowOffset={{x: 2, y: 2}} />}
+                
+                {/* 2-line Label */}
+                <Text text={`${pe.label ?? eq.name}\n${eq.dry_weight_t} t`} fontSize={Math.max(6, Math.min(10, bs * 0.75))} fill="#1f2937" x={-lPx / 2} y={-wPx / 2 + 2} align="center" width={lPx} />
+                
+                {/* Status icon at top-right corner */}
+                <Circle x={lPx / 2} y={-wPx / 2} radius={Math.max(3, bs * 0.2)} fill={isEqOk ? '#22c55e' : '#ef4444'} stroke="white" strokeWidth={1} />
                 {bad && <Text text="⚠" fontSize={12} fill="#dc2626" x={-6} y={-6} />}
               </Group>
             )
@@ -189,55 +202,60 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
 
           {/* Crane boom line from pedestal to active target */}
           {selectedId && activeCraneInfo && (
-            <>
-              <Line
-                points={[wx(pX), wy(pY), wx(activeTargetX), wy(activeTargetY)]}
-                stroke={activeCraneInfo.ok ? '#6b7280' : '#dc2626'}
-                strokeWidth={2}
-                listening={false}
-              />
-              <Text
-                x={(wx(pX) + wx(activeTargetX)) / 2 + 4}
-                y={(wy(pY) + wy(activeTargetY)) / 2 - 12}
-                text={`R = ${activeCraneInfo.radiusM.toFixed(1)}m`}
-                fontSize={fz}
-                fill="#374151"
-                listening={false}
-              />
-              {/* Active radius arc — thick bright orange dashed */}
-              <Shape
-                x={wx(pX)} y={wy(pY)}
-                stroke="#f97316"
-                strokeWidth={3}
-                dash={[10, 6]}
-                listening={false}
-                sceneFunc={(ctx, shape) => {
-                  const r = activeCraneInfo.radiusM * bs
-                  ctx.beginPath()
-                  ctx.arc(0, 0, r, 0, 2 * Math.PI, false)
-                  ctx.strokeShape(shape)
-                }}
-              />
-              {/* Capacity label at right of arc */}
-              <Text
-                x={wx(pX) + activeCraneInfo.radiusM * bs + 5}
-                y={wy(pY) - 8}
-                text={`${activeCraneInfo.capacityT.toFixed(0)} t`}
-                fontSize={fz + 1}
-                fontStyle="bold"
-                fill="#f97316"
-                listening={false}
-              />
-              {/* Capacity label at top of arc */}
-              <Text
-                x={wx(pX) - 14}
-                y={wy(pY) - activeCraneInfo.radiusM * bs - 16}
-                text={`${activeCraneInfo.radiusM.toFixed(0)} m`}
-                fontSize={fz}
-                fill="#f97316"
-                listening={false}
-              />
-            </>
+            <Group listening={false}>
+              {(() => {
+                let arcColor = '#16a34a'
+                if (activeCraneInfo.utilizationPct > 90) arcColor = '#dc2626'
+                else if (activeCraneInfo.utilizationPct > 70) arcColor = '#f97316'
+                
+                return (
+                  <>
+                    <Line
+                      points={[wx(pX), wy(pY), wx(activeTargetX), wy(activeTargetY)]}
+                      stroke={activeCraneInfo.ok ? arcColor : '#dc2626'}
+                      strokeWidth={2}
+                    />
+                    <Text
+                      x={(wx(pX) + wx(activeTargetX)) / 2 + 4}
+                      y={(wy(pY) + wy(activeTargetY)) / 2 - 12}
+                      text={`R = ${activeCraneInfo.radiusM.toFixed(1)}m`}
+                      fontSize={fz}
+                      fill="#374151"
+                    />
+                    {/* Active radius arc */}
+                    <Shape
+                      x={wx(pX)} y={wy(pY)}
+                      stroke={arcColor}
+                      strokeWidth={3}
+                      dash={[10, 6]}
+                      sceneFunc={(ctx, shape) => {
+                        const r = activeCraneInfo.radiusM * bs
+                        ctx.beginPath()
+                        ctx.arc(0, 0, r, 0, 2 * Math.PI, false)
+                        ctx.strokeShape(shape)
+                      }}
+                    />
+                    {/* Capacity label at right of arc */}
+                    <Text
+                      x={wx(pX) + activeCraneInfo.radiusM * bs + 5}
+                      y={wy(pY) - 8}
+                      text={`${activeCraneInfo.capacityT.toFixed(0)} t`}
+                      fontSize={fz + 1}
+                      fontStyle="bold"
+                      fill="#f97316"
+                    />
+                    {/* Capacity label at top of arc */}
+                    <Text
+                      x={wx(pX) - 14}
+                      y={wy(pY) - activeCraneInfo.radiusM * bs - 16}
+                      text={`${activeCraneInfo.radiusM.toFixed(0)} m`}
+                      fontSize={fz}
+                      fill="#f97316"
+                    />
+                  </>
+                )
+              })()}
+            </Group>
           )}
 
           {/* "Both" mode: dashed path between deck and overboard positions */}
@@ -253,6 +271,32 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
 
           {/* Crane pedestal and envelope */}
           {deckL > 0 && <>
+            {/* Slew Forbidden Zones */}
+            {(sMax - sMin < 360 && maxR > 0) && (
+              <Arc
+                x={wx(pX)} y={wy(pY)}
+                innerRadius={minR > 0 ? minR * bs : 0}
+                outerRadius={maxR * bs}
+                rotation={-sMax}
+                angle={360 - (sMax - sMin)}
+                fill="rgba(239,68,68,0.15)"
+                stroke="rgba(239,68,68,0.3)"
+                strokeWidth={1}
+                listening={false}
+              />
+            )}
+
+            {/* Min radius arc */}
+            {minR > 0 && (
+              <Shape x={wx(pX)} y={wy(pY)} stroke="#dc2626" strokeWidth={1.5} dash={[5, 5]} listening={false}
+                sceneFunc={(ctx, shape) => {
+                  const r = minR * bs; ctx.beginPath()
+                  if (sMax - sMin >= 360) ctx.arc(0, 0, r, 0, 2 * Math.PI, false)
+                  else ctx.arc(0, 0, r, -(sMin * Math.PI / 180), -(sMax * Math.PI / 180), true)
+                  ctx.strokeShape(shape)
+                }} />
+            )}
+
             {/* Max radius slew envelope — thick bright orange dashed */}
             {maxR > 0 && <>
               <Shape x={wx(pX)} y={wy(pY)} stroke="#f97316" strokeWidth={3} dash={[10, 6]} listening={false}

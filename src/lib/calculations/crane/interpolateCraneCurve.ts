@@ -15,7 +15,9 @@ import type { CraneCurvePoint } from '../../../types/database'
 export function interpolateCraneCurve(
   curve: ReadonlyArray<Pick<CraneCurvePoint, 'radius_m' | 'capacity_t'>>,
   radiusM: number,
+  minRadiusM?: number
 ): number {
+  if (minRadiusM !== undefined && radiusM < minRadiusM) return 0
   if (curve.length === 0) return 0
   if (radiusM <= curve[0].radius_m) return curve[0].capacity_t
   if (radiusM >= curve[curve.length - 1].radius_m) return 0
