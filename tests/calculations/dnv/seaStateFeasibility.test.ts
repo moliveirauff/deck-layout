@@ -60,12 +60,10 @@ describe('seaStateFeasibility', () => {
     expect(is_feasible).toBe(false)
   })
 
-  it('utilization_pct = 100 when F_total exactly equals crane capacity', () => {
-    // Build inputs so total ≈ crane capacity
-    const craneCapN = DRY_WEIGHT_T * 1000 * GRAVITY  // exactly equal to static weight
+  it('utilization_pct = 100 when F_total exactly equals crane capacity (infeasible due to 90% limit)', () => {
+    // Build inputs so total ≈ crane capacity (100% utilization)
+    const craneCapN = DRY_WEIGHT_T * 1000 * GRAVITY
     const dafActual = 1 + A_CT / GRAVITY
-    // Make hydrodynamic forces zero so F_total = f_static × DAF
-    const fTotal = craneCapN * dafActual
     const craneCapT = (craneCapN * dafActual) / (1000 * GRAVITY)
     const { utilization_pct, is_feasible } = seaStateFeasibility({
       dry_weight_t: DRY_WEIGHT_T,
@@ -75,9 +73,44 @@ describe('seaStateFeasibility', () => {
       f_slam_N: 0,
       a_ct: A_CT,
     })
-    expect(fTotal).toBeGreaterThan(0)  // sanity check
     expect(utilization_pct).toBeCloseTo(100, 1)
+    // With 90% crane utilization limit, 100% utilization is infeasible
+    expect(is_feasible).toBe(false)
+  })
+
+  it('is_feasible at 89% utilization (below 90% limit)', () => {
+    // Set crane capacity so utilization ≈ 89%
+    const dafActual = 1 + A_CT / GRAVITY
+    const fTotalN = DRY_WEIGHT_T * 1000 * GRAVITY * dafActual
+    // utilization = fTotal / craneCap → craneCap = fTotal / 0.89
+    const craneCapT = (fTotalN / 0.89) / (1000 * GRAVITY)
+    const { utilization_pct, is_feasible } = seaStateFeasibility({
+      dry_weight_t: DRY_WEIGHT_T,
+      crane_capacity_overboard_t: craneCapT,
+      f_drag_N: 0,
+      f_inertia_N: 0,
+      f_slam_N: 0,
+      a_ct: A_CT,
+    })
+    expect(utilization_pct).toBeCloseTo(89, 0)
     expect(is_feasible).toBe(true)
+  })
+
+  it('is_feasible = false at 91% utilization (above 90% limit)', () => {
+    const dafActual = 1 + A_CT / GRAVITY
+    const fTotalN = DRY_WEIGHT_T * 1000 * GRAVITY * dafActual
+    // utilization = fTotal / craneCap → craneCap = fTotal / 0.91
+    const craneCapT = (fTotalN / 0.91) / (1000 * GRAVITY)
+    const { utilization_pct, is_feasible } = seaStateFeasibility({
+      dry_weight_t: DRY_WEIGHT_T,
+      crane_capacity_overboard_t: craneCapT,
+      f_drag_N: 0,
+      f_inertia_N: 0,
+      f_slam_N: 0,
+      a_ct: A_CT,
+    })
+    expect(utilization_pct).toBeCloseTo(91, 0)
+    expect(is_feasible).toBe(false)
   })
 
   it('utilization_pct increases with larger forces (higher Hs)', () => {

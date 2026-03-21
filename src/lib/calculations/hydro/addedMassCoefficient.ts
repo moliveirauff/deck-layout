@@ -53,11 +53,15 @@ export function addedMassCoefficientCylinder(_dims: CylinderDimensions): number 
 
 /**
  * Unified entry point: compute added mass coefficient from geometry type.
+ * Accepts optional override — if non-null, replaces the calculated value.
  */
 export function addedMassCoefficient(
   geometryType: 'box' | 'cylinder',
   dims: BoxDimensions | CylinderDimensions,
+  override?: number | null,
 ): number {
+  if (override != null) return override
+
   if (geometryType === 'cylinder') {
     return addedMassCoefficientCylinder(dims as CylinderDimensions)
   }

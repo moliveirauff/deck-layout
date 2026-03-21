@@ -8,6 +8,9 @@
 import { GRAVITY } from '../hydro/constants'
 import { DAF_MAX } from '../motion/dynamicAmplification'
 
+/** 90% crane utilization limit per DNV best practice. */
+export const CRANE_UTILIZATION_LIMIT = 0.90
+
 export type ForceBreakdown = {
   f_static_N: number    // Static hook load W = m × g (N)
   f_drag_N: number      // Drag force component (N)
@@ -55,7 +58,7 @@ export function seaStateFeasibility(input: FeasibilityInput): FeasibilityResult 
   const utilization_pct = crane_capacity_N > 0 ? (f_total_N / crane_capacity_N) * 100 : Infinity
 
   return {
-    is_feasible: f_total_N <= crane_capacity_N,
+    is_feasible: f_total_N <= crane_capacity_N * CRANE_UTILIZATION_LIMIT,
     utilization_pct,
     daf: dafActual,
     force_breakdown: {

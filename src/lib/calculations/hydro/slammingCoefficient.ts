@@ -28,8 +28,14 @@ export function slammingCoefficientCylinder(): number {
 
 /**
  * Unified entry point: compute slamming coefficient from geometry type.
+ * Accepts optional override — if non-null, replaces the calculated value.
  */
-export function slammingCoefficient(geometryType: 'box' | 'cylinder'): number {
+export function slammingCoefficient(
+  geometryType: 'box' | 'cylinder',
+  override?: number | null,
+): number {
+  if (override != null) return override
+
   if (geometryType === 'cylinder') {
     return slammingCoefficientCylinder()
   }

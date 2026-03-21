@@ -57,14 +57,33 @@ export function dragCoefficientCylinder(_dims: CylinderDimensions): DragCoeffici
 }
 
 /**
+ * Optional manual overrides for drag coefficients.
+ * If a value is non-null, it replaces the auto-calculated coefficient.
+ */
+export type DragCoefficientOverrides = {
+  cd_x?: number | null
+  cd_y?: number | null
+  cd_z?: number | null
+}
+
+/**
  * Unified entry point: compute drag coefficients from geometry type and dimensions.
+ * Accepts optional overrides — any non-null override replaces the calculated value.
  */
 export function dragCoefficient(
   geometryType: 'box' | 'cylinder',
   dims: BoxDimensions | CylinderDimensions,
+  overrides?: DragCoefficientOverrides,
 ): DragCoefficients {
-  if (geometryType === 'cylinder') {
-    return dragCoefficientCylinder(dims as CylinderDimensions)
+  const calculated = geometryType === 'cylinder'
+    ? dragCoefficientCylinder(dims as CylinderDimensions)
+    : dragCoefficientBox(dims as BoxDimensions)
+
+  if (!overrides) return calculated
+
+  return {
+    cd_x: overrides.cd_x != null ? overrides.cd_x : calculated.cd_x,
+    cd_y: overrides.cd_y != null ? overrides.cd_y : calculated.cd_y,
+    cd_z: overrides.cd_z != null ? overrides.cd_z : calculated.cd_z,
   }
-  return dragCoefficientBox(dims as BoxDimensions)
 }
