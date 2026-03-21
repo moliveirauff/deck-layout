@@ -142,8 +142,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isLoading: false,
     }))
 
-    // Refresh stores if the response suggests data was mutated
-    if (reply && DATA_CHANGE_KEYWORDS.test(reply)) {
+    // Refresh stores whenever any tool was called (data may have changed)
+    // Previously this only triggered on keyword match in reply text — unreliable
+    // when Gemini responds in Portuguese or with different phrasing.
+    const mutatingTools = new Set([
+      'move_equipment_on_deck',
+      'move_equipment_overboard',
+      'update_equipment_weight',
+      'update_equipment_dimensions',
+      'update_rigging',
+      'run_splash_zone_analysis',
+      'run_all_analysis',
+    ])
+    const hadMutation = rawToolResults.some((r) => mutatingTools.has(r.name))
+    if (hadMutation) {
+      get().refreshData()
+    } else if (reply && DATA_CHANGE_KEYWORDS.test(reply)) {
+      // Fallback: keyword-based refresh for edge cases
       get().refreshData()
     }
   },
