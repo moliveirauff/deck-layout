@@ -21,9 +21,14 @@ describe('interpolateCraneCurve', () => {
     expect(interpolateCraneCurve(CURVE, 5)).toBe(400)
   })
 
-  it('returns 0 when radius exceeds maximum', () => {
-    expect(interpolateCraneCurve(CURVE, 40)).toBe(0)
+  it('returns last capacity when radius equals maximum (fix: not 0)', () => {
+    // radius == maxRadius should return the actual capacity at that point, not 0
+    expect(interpolateCraneCurve(CURVE, 40)).toBe(30)
+  })
+
+  it('returns 0 when radius strictly exceeds maximum', () => {
     expect(interpolateCraneCurve(CURVE, 45)).toBe(0)
+    expect(interpolateCraneCurve(CURVE, 40.01)).toBe(0)
   })
 
   it('returns exact capacity when radius matches a curve point', () => {
