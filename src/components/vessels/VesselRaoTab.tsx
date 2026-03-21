@@ -170,8 +170,13 @@ export function VesselRaoTab({ vesselId }: Props) {
         </div>
       </div>
 
+      {raoStore.vesselError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 mb-3">
+          <p className="text-sm font-medium text-red-800">Error saving RAO data</p>
+          <p className="text-xs text-red-600 mt-1">{raoStore.vesselError}</p>
+        </div>
+      )}
       {saved && <p className="text-xs text-green-600">RAO data saved successfully.</p>}
-      {raoStore.vesselError && <p className="text-xs text-red-600">{raoStore.vesselError}</p>}
 
       <RaoTable rows={rows} onChange={(r) => { setRows(r); setSaved(false) }} />
 

@@ -98,10 +98,9 @@ export default function AnalysisPage() {
     const ct = calculateCraneTipMotion(raoStore.entries, tip)
 
     const gridResult = await runner.run({
-      hs_m: 0, tp_s: 0,
       cd_z: cdVal.cd_z, ca: caVal, cs: csVal,
       area_z_m2: areasVal.area_z_m2, volume_m3: volumeVal,
-      crane_tip_heave_m: ct.craneTipHeaveM,
+      craneTipMotionResult: ct,
       dry_weight_t: eq.dry_weight_t,
       crane_capacity_overboard_t: pe.crane_capacity_overboard_t,
     })

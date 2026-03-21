@@ -1,35 +1,34 @@
 import { GRAVITY } from '../hydro/constants'
 
+/** Maximum DAF per DNV-ST-N001 (cap to prevent absurd values). */
+export const DAF_MAX = 2.0
+
 /**
  * Dynamic Amplification Factor (DAF) per DNV-ST-N001 (simplified approach).
  *
- *   DAF = 1 + a_ct / g
+ *   DAF = min(1 + a_ct / g, DAF_MAX)
  *
  * Where a_ct is the significant crane tip vertical acceleration at a given
  * wave angular frequency ω:
  *
  *   a_ct = craneTipHeaveM × ω²
  *
- * A DAF of 1.0 means no dynamic amplification (quasi-static). Values > 1
- * amplify the static hook load.
+ * Capped at DAF_MAX = 2.0 per DNV engineering practice.
  *
  * @param craneTipHeaveM  Significant crane tip vertical heave amplitude (m)
  * @param omega           Wave angular frequency (rad/s), ω = 2π / Tp
- * @returns               DAF (dimensionless, ≥ 1.0)
+ * @returns               DAF (dimensionless, 1.0 ≤ DAF ≤ DAF_MAX)
  */
 export function dynamicAmplificationFactor(
   craneTipHeaveM: number,
   omega: number,
 ): number {
   const a_ct = craneTipHeaveM * omega * omega
-  return 1 + a_ct / GRAVITY
+  return Math.min(1 + a_ct / GRAVITY, DAF_MAX)
 }
 
 /**
  * Crane tip vertical acceleration (m/s²) from significant heave amplitude and wave frequency.
- *
- * @param craneTipHeaveM  Significant crane tip vertical heave amplitude (m)
- * @param omega           Wave angular frequency (rad/s)
  */
 export function craneTipAcceleration(craneTipHeaveM: number, omega: number): number {
   return craneTipHeaveM * omega * omega
@@ -37,9 +36,6 @@ export function craneTipAcceleration(craneTipHeaveM: number, omega: number): num
 
 /**
  * Crane tip vertical velocity (m/s) from significant heave amplitude and wave frequency.
- *
- * @param craneTipHeaveM  Significant crane tip vertical heave amplitude (m)
- * @param omega           Wave angular frequency (rad/s)
  */
 export function craneTipVelocity(craneTipHeaveM: number, omega: number): number {
   return craneTipHeaveM * omega

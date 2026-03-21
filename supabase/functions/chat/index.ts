@@ -209,23 +209,73 @@ function calcSlammingCoeff(geometry: string) {
 }
 
 /**
- * Simplified crane-tip heave amplitude per metre of Hs.
- * Combines vessel heave RAO with pitch/roll contributions at the crane tip offset.
+ * Build a per-period crane tip RAO map from RAO entries.
+ * Returns Map<period_s, verticalRaoMperM> — worst case across all directions.
+ * Fixes the DAF bug: replaces single aggregated value with per-Tp interpolation.
  */
-function calcCraneTipHeavePerM(
+function buildRaoByPeriod(
   raoEntries: Array<Record<string, number>>,
   armX: number,
   armY: number,
-): number {
-  if (!raoEntries.length) return 0
-  const n = raoEntries.length
-  const avgHeave = raoEntries.reduce((s, r) => s + (r.heave_amplitude_m_per_m ?? 0), 0) / n
-  const avgPitch = raoEntries.reduce((s, r) => s + (r.pitch_amplitude_deg_per_m ?? 0), 0) / n
-  const avgRoll = raoEntries.reduce((s, r) => s + (r.roll_amplitude_deg_per_m ?? 0), 0) / n
-  const pitchContrib = Math.abs(armX) * Math.sin((avgPitch * Math.PI) / 180)
-  const rollContrib = Math.abs(armY) * Math.sin((avgRoll * Math.PI) / 180)
-  return Math.sqrt(avgHeave ** 2 + pitchContrib ** 2 + rollContrib ** 2)
+  zTip: number,
+): Map<number, number> {
+  const raoByPeriod = new Map<number, number>()
+  if (!raoEntries.length) return raoByPeriod
+
+  // Group by direction
+  const byDir = new Map<number, Array<Record<string, number>>>()
+  for (const r of raoEntries) {
+    const dir = r.wave_direction_deg ?? 0
+    const arr = byDir.get(dir) ?? []
+    arr.push(r)
+    byDir.set(dir, arr)
+  }
+
+  // Collect unique periods
+  const periods = new Set<number>()
+  for (const r of raoEntries) periods.add(r.wave_period_s ?? 0)
+
+  for (const period of periods) {
+    let maxVert = 0
+    for (const entries of byDir.values()) {
+      const entry = entries.find((e) => e.wave_period_s === period)
+      if (!entry) continue
+      const rollRad = ((entry.roll_amplitude_deg_per_m ?? 0) * Math.PI) / 180
+      const pitchRad = ((entry.pitch_amplitude_deg_per_m ?? 0) * Math.PI) / 180
+      const vert = Math.abs(
+        (entry.heave_amplitude_m_per_m ?? 0) + pitchRad * armX + rollRad * armY,
+      )
+      if (vert > maxVert) maxVert = vert
+    }
+    raoByPeriod.set(period, maxVert)
+  }
+  return raoByPeriod
 }
+
+/**
+ * Interpolate crane tip heave amplitude for a specific Tp and Hs.
+ * Matches frontend craneTipHeaveAtPeriod() logic.
+ */
+function interpolateCraneTipHeave(
+  raoByPeriod: Map<number, number>,
+  tp_s: number,
+  hs_m: number,
+): number {
+  const periods = [...raoByPeriod.keys()].sort((a, b) => a - b)
+  if (!periods.length) return 0
+  if (tp_s <= periods[0]) return (raoByPeriod.get(periods[0]) ?? 0) * (hs_m / 2)
+  if (tp_s >= periods[periods.length - 1]) return (raoByPeriod.get(periods[periods.length - 1]) ?? 0) * (hs_m / 2)
+  let lowerIdx = 0
+  for (let i = 0; i < periods.length - 1; i++) {
+    if (periods[i] <= tp_s && tp_s < periods[i + 1]) { lowerIdx = i; break }
+  }
+  const t0 = periods[lowerIdx], t1 = periods[lowerIdx + 1]
+  const r0 = raoByPeriod.get(t0) ?? 0, r1 = raoByPeriod.get(t1) ?? 0
+  const alpha = (tp_s - t0) / (t1 - t0)
+  return (r0 + alpha * (r1 - r0)) * (hs_m / 2)
+}
+
+const DAF_MAX = 2.0
 
 interface CellInput {
   hs_m: number
@@ -235,12 +285,13 @@ interface CellInput {
   cs: number
   area_z_m2: number
   volume_m3: number
-  crane_tip_heave_per_m: number
+  /** v2: per-period RAO map (replaces scalar crane_tip_heave_per_m). */
+  raoByPeriod: Map<number, number>
   dry_weight_t: number
   crane_capacity_t: number
 }
 
-/** DNV-ST-N001 splash-zone cell calculation (simplified). */
+/** DNV-ST-N001 splash-zone cell calculation — v2 with per-period heave and DAF cap. */
 function calcCell(p: CellInput) {
   const RHO = 1025
   const G = 9.81
@@ -250,21 +301,31 @@ function calcCell(p: CellInput) {
   }
 
   const omega = (2 * Math.PI) / Math.max(p.tp_s, 1)
-  const eta_max = (p.hs_m * 1.86) / 2 // crest height (extreme value)
+  const amplitude = p.hs_m / 2
 
-  const v_water = omega * eta_max
-  const v_crane = omega * p.crane_tip_heave_per_m * p.hs_m
+  // v2: per-cell crane tip heave (not aggregated across all periods)
+  const crane_tip_heave_m = interpolateCraneTipHeave(p.raoByPeriod, p.tp_s, p.hs_m)
+
+  const v_water = amplitude * omega
+  const v_crane = crane_tip_heave_m * omega
   const v_rel = v_water + v_crane
 
+  const a_water = amplitude * omega * omega
+  const a_crane = crane_tip_heave_m * omega * omega
+
   const Fd = 0.5 * RHO * p.cd_z * p.area_z_m2 * v_rel ** 2
-  const Fa = p.ca * RHO * p.volume_m3 * omega ** 2 * eta_max
+  const Fa = p.ca * RHO * p.volume_m3 * (a_crane + a_water)
   const Fs = 0.5 * RHO * p.cs * p.area_z_m2 * v_rel ** 2
 
   const W_N = p.dry_weight_t * 1000 * G
-  const daf = 1 + (Fd + Fa + Fs) / W_N
-  const utilization_pct = (p.dry_weight_t * daf) / p.crane_capacity_t * 100
+  const crane_cap_N = p.crane_capacity_t * 1000 * G
 
-  return { daf, utilization_pct, is_feasible: utilization_pct < 100 }
+  // v2: DAF computed from a_crane only, capped at DAF_MAX
+  const daf = Math.min(1 + a_crane / G, DAF_MAX)
+  const f_total_N = W_N * daf + Fd + Fa + Fs
+  const utilization_pct = (f_total_N / crane_cap_N) * 100
+
+  return { daf, utilization_pct, is_feasible: utilization_pct <= 100 }
 }
 
 // ─── Sea-state grid constants ──────────────────────────────────────────────────
@@ -327,7 +388,9 @@ async function runAnalysisForEquipment(
 
   const armX = (pe.overboard_pos_x as number) - (vessel.crane_pedestal_x ?? 0)
   const armY = (pe.overboard_pos_y as number) - (vessel.crane_pedestal_y ?? 0)
-  const craneTipH = calcCraneTipHeavePerM(raos ?? [], armX, armY)
+  // v2: build per-period RAO map (fixes DAF bug)
+  const zTip = (vessel.crane_pedestal_height_m ?? 15) + (vessel.crane_boom_length_m ?? 40) * 0.8
+  const raoByPeriodMap = buildRaoByPeriod(raos ?? [], armX, armY, zTip)
 
   const geometry = (eq.geometry_type as string) ?? 'box'
   const areas = calcProjectedAreas(
@@ -343,7 +406,7 @@ async function runAnalysisForEquipment(
   const ca = calcAddedMass(geometry)
   const cs = calcSlammingCoeff(geometry)
 
-  // Grid computation
+  // Grid computation — v2 uses raoByPeriod per cell
   let maxHsM = 0
   let worstDaf = 1
   const cells: Array<{
@@ -364,7 +427,7 @@ async function runAnalysisForEquipment(
         cs,
         area_z_m2: areas.area_z_m2,
         volume_m3: volume,
-        crane_tip_heave_per_m: craneTipH,
+        raoByPeriod: raoByPeriodMap,
         dry_weight_t: eq.dry_weight_t as number,
         crane_capacity_t: pe.crane_capacity_overboard_t as number,
       })
@@ -383,7 +446,7 @@ async function runAnalysisForEquipment(
     projected_area_y_m2: areas.area_y_m2,
     projected_area_z_m2: areas.area_z_m2,
     submerged_volume_m3: volume,
-    crane_tip_heave_m: craneTipH,
+    crane_tip_heave_m: interpolateCraneTipHeave(raoByPeriodMap, 10, 2.0), // representative value
     crane_tip_lateral_m: 0,
     daf: worstDaf,
     max_hs_m: maxHsM,
@@ -431,7 +494,7 @@ async function runAnalysisForEquipment(
     max_hs_m: maxHsM,
     daf: +worstDaf.toFixed(3),
     operability_pct: +operabilityPct.toFixed(1),
-    crane_tip_heave_per_m: +craneTipH.toFixed(3),
+    crane_tip_heave_at_tp10: +interpolateCraneTipHeave(raoByPeriodMap, 10, 2.0).toFixed(3),
     cd_z: cd.cd_z,
     ca,
     cs,
@@ -686,7 +749,9 @@ async function executeFunction(
       const vessel = project?.vessel_snapshot?.vessel ?? {}
       const armX = ((found.pe.overboard_pos_x as number) ?? 0) - (vessel.crane_pedestal_x ?? 0)
       const armY = ((found.pe.overboard_pos_y as number) ?? 0) - (vessel.crane_pedestal_y ?? 0)
-      const craneTipH = calcCraneTipHeavePerM(raos ?? [], armX, armY)
+      // v2: build per-period RAO map
+      const zTipScenario = (vessel.crane_pedestal_height_m ?? 15) + (vessel.crane_boom_length_m ?? 40) * 0.8
+      const raoByPeriodScenario = buildRaoByPeriod(raos ?? [], armX, armY, zTipScenario)
 
       const comparison = []
       for (const val of values) {
@@ -712,7 +777,7 @@ async function executeFunction(
         for (const hs of HS_STEPS) {
           let hsAllOk = true
           for (const tp of TP_STEPS) {
-            const cell = calcCell({ hs_m: hs, tp_s: tp, cd_z: cd.cd_z, ca, cs, area_z_m2: areas.area_z_m2, volume_m3: volume, crane_tip_heave_per_m: craneTipH, dry_weight_t: eq.dry_weight_t as number, crane_capacity_t: craneCapT })
+            const cell = calcCell({ hs_m: hs, tp_s: tp, cd_z: cd.cd_z, ca, cs, area_z_m2: areas.area_z_m2, volume_m3: volume, raoByPeriod: raoByPeriodScenario, dry_weight_t: eq.dry_weight_t as number, crane_capacity_t: craneCapT })
             totalCells++
             if (cell.is_feasible) feasibleCells++
             else hsAllOk = false

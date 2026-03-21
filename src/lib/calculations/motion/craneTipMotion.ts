@@ -11,23 +11,21 @@ export type CraneTipPosition = {
 
 /**
  * Crane tip motion results for a single equipment item.
+ * v2: raoByPeriod map replaces single aggregated value — fixes DAF bug.
  */
 export type CraneTipMotionResult = {
-  craneTipHeaveM: number   // Significant vertical motion at crane tip (m)
-  craneTipLateralM: number // Significant lateral motion at crane tip (m)
-  worstDirection: number   // Wave direction producing maximum motion (degrees)
+  /** RAO per wave period: worst-case (max across all directions) for each Tp. */
+  raoByPeriod: Map<number, { verticalRaoMperM: number; lateralRaoMperM: number }>
+  /** Wave direction producing maximum combined motion (degrees). */
+  worstDirection: number
+  /** Legacy: max significant crane tip heave across all periods (m). Used for display/PDF. */
+  craneTipHeaveM: number
+  /** Legacy: max significant crane tip lateral motion across all periods (m). */
+  craneTipLateralM: number
 }
 
 /**
  * Calculate the crane tip position relative to vessel origin.
- *
- * @param pedestalX   Crane pedestal X position on deck (m)
- * @param pedestalY   Crane pedestal Y position on deck (m)
- * @param pedestalH   Crane pedestal height above deck (m)
- * @param radiusM     Horizontal crane radius to overboard target (m)
- * @param slewDeg     Slew angle to overboard target (degrees from +X axis)
- * @param boomAngleDeg Boom angle from horizontal (degrees)
- * @param boomLengthM  Boom length (m)
  */
 export function craneTipPosition(
   pedestalX: number,
@@ -54,8 +52,6 @@ export function craneTipPosition(
  *
  * Lateral crane tip motion per unit wave amplitude:
  *   y_ct = roll_RAO(rad/m) × z_tip
- *
- * Roll and pitch RAOs are given in deg/m and converted to rad/m internally.
  */
 export function craneTipRao(
   rao: Pick<RaoEntry, 'heave_amplitude_m_per_m' | 'roll_amplitude_deg_per_m' | 'pitch_amplitude_deg_per_m'>,
@@ -73,16 +69,72 @@ export function craneTipRao(
 }
 
 /**
+ * Interpolated crane tip heave amplitude for a specific (Hs, Tp) cell.
+ *
+ * - Looks up the two nearest wave periods in raoByPeriod bracketing tp_s
+ * - Linearly interpolates verticalRaoMperM between them
+ * - Returns interpolatedRao × (hs_m / 2) — actual heave amplitude in meters
+ * - If tp_s is outside all available periods, clamps to nearest endpoint
+ *
+ * @param result  CraneTipMotionResult from calculateCraneTipMotion()
+ * @param tp_s    Peak wave period for this cell (s)
+ * @param hs_m    Significant wave height for this cell (m)
+ */
+export function craneTipHeaveAtPeriod(
+  result: CraneTipMotionResult,
+  tp_s: number,
+  hs_m: number,
+): number {
+  const periods = [...result.raoByPeriod.keys()].sort((a, b) => a - b)
+
+  if (periods.length === 0) return 0
+
+  // Clamp below
+  if (tp_s <= periods[0]) {
+    const rao = result.raoByPeriod.get(periods[0])!
+    return rao.verticalRaoMperM * (hs_m / 2)
+  }
+
+  // Clamp above
+  if (tp_s >= periods[periods.length - 1]) {
+    const rao = result.raoByPeriod.get(periods[periods.length - 1])!
+    return rao.verticalRaoMperM * (hs_m / 2)
+  }
+
+  // Find bracketing periods
+  let lowerIdx = 0
+  for (let i = 0; i < periods.length - 1; i++) {
+    if (periods[i] <= tp_s && tp_s < periods[i + 1]) {
+      lowerIdx = i
+      break
+    }
+  }
+
+  const t0 = periods[lowerIdx]
+  const t1 = periods[lowerIdx + 1]
+  const r0 = result.raoByPeriod.get(t0)!
+  const r1 = result.raoByPeriod.get(t1)!
+
+  // Linear interpolation
+  const alpha = (tp_s - t0) / (t1 - t0)
+  const interpolatedRao = r0.verticalRaoMperM + alpha * (r1.verticalRaoMperM - r0.verticalRaoMperM)
+
+  return interpolatedRao * (hs_m / 2)
+}
+
+/**
  * Calculate significant crane tip heave and lateral motion from RAO entries.
  *
- * Uses simplified regular-wave approach (MVP):
- * - For each wave direction, find the maximum crane tip RAO across all periods
- * - Significant motion ≈ max crane tip RAO (amplitude in m/m of wave height)
- * - Select the worst-case direction
+ * v2 algorithm:
+ * - For each unique wave period across all entries:
+ *   - Compute craneTipRao for every direction that has that period
+ *   - Store worst-case (max verticalRaoMperM) in raoByPeriod
+ * - craneTipHeaveM = max of all verticalRaoMperM × 2 (significant amplitude)
+ * - craneTipLateralM = max of all lateralRaoMperM × 2
+ * - worstDirection = direction producing highest combined motion (legacy)
  *
  * @param raoEntries  All RAO entries for this project (multiple directions)
  * @param tip         Crane tip position for this equipment's overboard config
- * @returns Crane tip motion result with heave, lateral, and worst direction
  */
 export function calculateCraneTipMotion(
   raoEntries: ReadonlyArray<Pick<
@@ -91,9 +143,14 @@ export function calculateCraneTipMotion(
   >>,
   tip: CraneTipPosition,
 ): CraneTipMotionResult {
-  if (raoEntries.length === 0) {
-    return { craneTipHeaveM: 0, craneTipLateralM: 0, worstDirection: 0 }
+  const empty: CraneTipMotionResult = {
+    raoByPeriod: new Map(),
+    worstDirection: 0,
+    craneTipHeaveM: 0,
+    craneTipLateralM: 0,
   }
+
+  if (raoEntries.length === 0) return empty
 
   // Group by wave direction
   const byDir = new Map<number, typeof raoEntries[number][]>()
@@ -103,12 +160,41 @@ export function calculateCraneTipMotion(
     byDir.set(r.wave_direction_deg, arr)
   }
 
-  let maxHeave = 0
-  let maxLateral = 0
-  let worstDir = 0
+  // Collect all unique periods
+  const allPeriods = new Set<number>()
+  for (const entries of byDir.values()) {
+    for (const e of entries) allPeriods.add(e.wave_period_s)
+  }
 
+  // Build raoByPeriod: worst-case across all directions for each period
+  const raoByPeriod = new Map<number, { verticalRaoMperM: number; lateralRaoMperM: number }>()
+  for (const period of allPeriods) {
+    let maxVert = 0
+    let maxLat = 0
+    for (const entries of byDir.values()) {
+      const entry = entries.find((e) => e.wave_period_s === period)
+      if (!entry) continue
+      const { verticalRaoMperM, lateralRaoMperM } = craneTipRao(entry, tip)
+      if (verticalRaoMperM > maxVert) maxVert = verticalRaoMperM
+      if (lateralRaoMperM > maxLat) maxLat = lateralRaoMperM
+    }
+    raoByPeriod.set(period, { verticalRaoMperM: maxVert, lateralRaoMperM: maxLat })
+  }
+
+  // Legacy fields: max across all periods × 2 (significant amplitude)
+  let maxVertAll = 0
+  let maxLatAll = 0
+  for (const { verticalRaoMperM, lateralRaoMperM } of raoByPeriod.values()) {
+    if (verticalRaoMperM > maxVertAll) maxVertAll = verticalRaoMperM
+    if (lateralRaoMperM > maxLatAll) maxLatAll = lateralRaoMperM
+  }
+  const craneTipHeaveM = maxVertAll * 2
+  const craneTipLateralM = maxLatAll * 2
+
+  // worstDirection: direction with highest combined significant motion (legacy)
+  let worstDirection = 0
+  let maxCombined = -Infinity
   for (const [dir, entries] of byDir) {
-    // RMS of crane tip RAOs across all periods for this direction
     let sumVertSq = 0
     let sumLatSq = 0
     for (const rao of entries) {
@@ -116,18 +202,14 @@ export function calculateCraneTipMotion(
       sumVertSq += verticalRaoMperM * verticalRaoMperM
       sumLatSq += lateralRaoMperM * lateralRaoMperM
     }
-    // Significant amplitude ≈ 2 × σ (simplified spectral approach)
     const sigHeave = 2 * Math.sqrt(sumVertSq / entries.length)
     const sigLateral = 2 * Math.sqrt(sumLatSq / entries.length)
-
-    // Track worst case (based on combined motion magnitude)
     const combined = sigHeave + sigLateral
-    if (combined > maxHeave + maxLateral) {
-      maxHeave = sigHeave
-      maxLateral = sigLateral
-      worstDir = dir
+    if (combined > maxCombined) {
+      maxCombined = combined
+      worstDirection = dir
     }
   }
 
-  return { craneTipHeaveM: maxHeave, craneTipLateralM: maxLateral, worstDirection: worstDir }
+  return { raoByPeriod, worstDirection, craneTipHeaveM, craneTipLateralM }
 }

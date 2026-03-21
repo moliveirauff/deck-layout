@@ -3,12 +3,24 @@
  *
  * Evaluates feasibility across a full Hs × Tp matrix and determines
  * the maximum allowable significant wave height (max_hs_m).
+ *
+ * v2: Uses craneTipMotionResult (per-period RAO) instead of a single
+ * crane_tip_heave_m, fixing the DAF calculation bug.
  */
 
 import { splashZoneLoads, type SplashZoneLoadsInput } from './splashZoneLoads'
 import { seaStateFeasibility, type FeasibilityResult } from './seaStateFeasibility'
+import {
+  craneTipHeaveAtPeriod,
+  type CraneTipMotionResult,
+} from '../motion/craneTipMotion'
 
-export type SeaStateGridInput = SplashZoneLoadsInput & {
+// SplashZoneLoadsInput without crane_tip_heave_m — provided per-cell from RAOs
+type SplashZoneBaseInput = Omit<SplashZoneLoadsInput, 'hs_m' | 'tp_s' | 'crane_tip_heave_m'>
+
+export type SeaStateGridInput = SplashZoneBaseInput & {
+  /** v2: per-period RAO result (replaces scalar crane_tip_heave_m). */
+  craneTipMotionResult: CraneTipMotionResult
   dry_weight_t: number
   crane_capacity_overboard_t: number
 }
@@ -40,6 +52,9 @@ export const TP_VALUES: number[] = Array.from({ length: 15 }, (_, i) => 4 + i)
 /**
  * Generate the full Hs × Tp operability grid.
  *
+ * For each (Hs, Tp) cell, interpolates the crane tip heave from the
+ * per-period RAO map, then computes hydrodynamic forces and feasibility.
+ *
  * @param input       Equipment + hydro parameters (shared across all cells)
  * @param onProgress  Optional callback receiving progress 0–1 as cells are computed
  */
@@ -47,14 +62,17 @@ export function generateSeaStateGrid(
   input: SeaStateGridInput,
   onProgress?: (fraction: number) => void,
 ): SeaStateGridResult {
-  const { dry_weight_t, crane_capacity_overboard_t } = input
+  const { dry_weight_t, crane_capacity_overboard_t, craneTipMotionResult, ...baseInput } = input
   const cells: SeaStateCellResult[] = []
   const total = HS_VALUES.length * TP_VALUES.length
   let done = 0
 
   for (const hs_m of HS_VALUES) {
     for (const tp_s of TP_VALUES) {
-      const forces = splashZoneLoads({ ...input, hs_m, tp_s })
+      // v2: interpolate crane tip heave for this specific (Hs, Tp) cell
+      const crane_tip_heave_m = craneTipHeaveAtPeriod(craneTipMotionResult, tp_s, hs_m)
+
+      const forces = splashZoneLoads({ ...baseInput, hs_m, tp_s, crane_tip_heave_m })
       const feasibility = seaStateFeasibility({
         dry_weight_t,
         crane_capacity_overboard_t,
@@ -88,7 +106,7 @@ export function generateSeaStateGrid(
     }
   }
 
-  // Worst DAF at the max_hs_m row (or at highest computed Hs if nothing feasible)
+  // Worst DAF at the max_hs_m row (or at lowest Hs if nothing feasible)
   const refHs = max_hs_m > 0 ? max_hs_m : HS_VALUES[0]
   const worstRow = cells.filter((c) => c.hs_m === refHs)
   const worst_daf = worstRow.length > 0 ? Math.max(...worstRow.map((c) => c.daf)) : 1

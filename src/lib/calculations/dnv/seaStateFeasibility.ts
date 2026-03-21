@@ -6,6 +6,7 @@
  */
 
 import { GRAVITY } from '../hydro/constants'
+import { DAF_MAX } from '../motion/dynamicAmplification'
 
 export type ForceBreakdown = {
   f_static_N: number    // Static hook load W = m × g (N)
@@ -45,7 +46,7 @@ export function seaStateFeasibility(input: FeasibilityInput): FeasibilityResult 
   const { dry_weight_t, crane_capacity_overboard_t, f_drag_N, f_inertia_N, f_slam_N, a_ct } =
     input
 
-  const dafActual = 1 + a_ct / GRAVITY
+  const dafActual = Math.min(1 + a_ct / GRAVITY, DAF_MAX)
 
   const f_static_N = dry_weight_t * 1000 * GRAVITY
   const crane_capacity_N = crane_capacity_overboard_t * 1000 * GRAVITY

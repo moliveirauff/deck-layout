@@ -7,6 +7,7 @@ import type {
 } from '../../types/database'
 import { loadVessel } from './vesselService'
 import { loadVesselBarriers, loadDeckLoadZones, loadCraneCurve } from './vesselService'
+import { copyVesselRaosToProject } from './raoService'
 
 type ServiceResult<T> = Promise<{ data: T | null; error: string | null }>
 
@@ -57,6 +58,12 @@ export async function createProject(
       .select()
       .single()
     if (error) return { data: null, error: error.message }
+
+    // Auto-copy vessel RAOs to project so analysis is ready immediately
+    if (data) {
+      await copyVesselRaosToProject(project.vessel_id, (data as Project).id)
+    }
+
     return { data: data as Project, error: null }
   } catch {
     return { data: null, error: 'Network error' }
