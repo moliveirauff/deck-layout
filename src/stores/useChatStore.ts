@@ -6,6 +6,7 @@ import {
 } from '../lib/chat/chatService'
 import { useProjectStore } from './useProjectStore'
 import { useDeckLayoutStore } from './useDeckLayoutStore'
+import { useEquipmentStore } from './useEquipmentStore'
 import { useAnalysisStore } from './useAnalysisStore'
 
 const DATA_CHANGE_KEYWORDS =
@@ -62,10 +63,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   refreshData: () => {
     const { activeProject, loadProject } = useProjectStore.getState()
     const { loadProjectEquipment } = useDeckLayoutStore.getState()
+    const { loadEquipment } = useEquipmentStore.getState()
     const { loadResults, results } = useAnalysisStore.getState()
     if (activeProject) {
       void loadProject(activeProject.id)
       void loadProjectEquipment(activeProject.id)
+      void loadEquipment()   // needed when agent mutates equipment_library (weight, dimensions)
       for (const peId of Object.keys(results)) {
         void loadResults(peId)
       }

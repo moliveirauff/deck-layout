@@ -654,15 +654,33 @@ async function executeFunction(
     case 'get_rigging_summary': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
-      const { pe } = found
+      const { pe, eq } = found
+
+      // Load actual rigging arrangement from DB
+      const { data: arrangement } = await supabase
+        .from('project_equipment_rigging')
+        .select('*, rigging_item(*)')
+        .eq('project_equipment_id', pe.id)
+
+      const totalRiggingWeightKg = (arrangement ?? []).reduce(
+        (sum: number, r: Record<string, unknown>) => sum + ((r.rigging_item as Record<string, number>)?.weight_kg ?? 0) * (r.quantity as number ?? 1), 0
+      )
+
       return {
         equipment: found.matchedName,
-        rigging_weight_t: pe.rigging_weight_t ?? 0,
-        sling_count: pe.sling_count ?? 4,
-        sling_angle_deg: pe.sling_angle_deg ?? 60,
-        mbl_t: pe.rigging_mbl_t ?? 0,
-        wll_t: pe.rigging_wll_t ?? 0,
-        safety_factor: pe.rigging_safety_factor ?? 3.0,
+        rigging_weight_t: eq.rigging_weight_t ?? totalRiggingWeightKg / 1000,
+        sling_count: (arrangement ?? []).filter((r: Record<string, unknown>) => (r.rigging_item as Record<string,string>)?.rigging_type === 'sling').length,
+        arrangement: (arrangement ?? []).map((r: Record<string, unknown>) => ({
+          item: (r.rigging_item as Record<string,unknown>)?.name,
+          type: (r.rigging_item as Record<string,unknown>)?.rigging_type,
+          qty: r.quantity,
+          angle_deg: r.angle_from_vertical_deg,
+          sling_force_t: r.sling_force_t,
+          wll_t: (r.rigging_item as Record<string,unknown>)?.wll_t,
+          wll_ok: r.wll_ok,
+        })),
+        contingency_pct: eq.contingency_pct ?? 5,
+        note: arrangement?.length ? undefined : 'No rigging arrangement saved. Go to the Rigging tab to configure.',
       }
     }
 
@@ -681,40 +699,120 @@ async function executeFunction(
     case 'get_seafastening_results': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+
+      // Read from sea_fastening_result table
+      const { data: sfResult } = await supabase
+        .from('sea_fastening_result')
+        .select('*')
+        .eq('project_equipment_id', found.pe.id)
+        .maybeSingle()
+
+      // Also read project transit conditions
+      const { data: project } = await supabase
+        .from('project')
+        .select('transit_hs_m, transit_tp_s, transit_heading_deg, transit_duration_h')
+        .eq('id', projectId)
+        .single()
+
+      if (!sfResult) {
+        return {
+          equipment: found.matchedName,
+          message: 'No sea-fastening analysis saved yet. Go to the Sea-Fastening tab to run it.',
+          transit_conditions: project ?? null,
+        }
+      }
+
       return {
         equipment: found.matchedName,
-        transit_hs_m: 4.5,
-        max_accel_g: { x: 0.2, y: 0.3, z: 0.8 },
-        seafastening_load_t: (found.eq.dry_weight_t as number ?? 0) * 1.5,
-        welding_req_mm: 12,
-        status: 'OK',
+        transit_hs_m: project?.transit_hs_m ?? null,
+        transit_tp_s: project?.transit_tp_s ?? null,
+        surge_force_kn: sfResult.surge_force_kn,
+        sway_force_kn: sfResult.sway_force_kn,
+        heave_force_kn: sfResult.heave_force_kn,
+        total_horizontal_kn: sfResult.total_horizontal_kn,
+        acc_transversal_ms2: sfResult.acc_transversal_ms2,
+        acc_longitudinal_ms2: sfResult.acc_longitudinal_ms2,
+        acc_vertical_ms2: sfResult.acc_vertical_ms2,
+        force_horizontal_resultant_kn: sfResult.force_horizontal_resultant_kn,
+        force_vertical_kn: sfResult.force_vertical_kn,
+        force_uplift_kn: sfResult.force_uplift_kn,
+        n_tiedowns: sfResult.n_tiedowns,
+        mbl_required_per_tiedown_kn: sfResult.mbl_required_per_tiedown_kn,
+        tiedown_ok: sfResult.tiedown_ok,
+        grillage_pressure_t_m2: sfResult.grillage_pressure_t_m2,
+        deck_load_grillage_ok: sfResult.deck_load_grillage_ok,
+        daf_transit: sfResult.daf_transit,
+        calculated_at: sfResult.calculated_at,
       }
     }
 
     case 'get_stability_results': {
       const { data: project } = await supabase.from('project').select('vessel_snapshot').eq('id', projectId).single()
       const vessel = project?.vessel_snapshot?.vessel
+
+      // Read actual stability result from DB
+      const { data: stabResult } = await supabase
+        .from('stability_result')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('calculated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
       return {
         vessel_name: vessel?.name ?? 'Unknown',
-        displacement_t: vessel?.displacement_t ?? 15000,
-        gm_m: vessel?.gm_m ?? 2.5,
-        kg_m: vessel?.kg_m ?? 12.0,
-        trim_deg: 0.2,
-        heel_deg: 0.5,
-        status: 'Within limits',
+        vessel_particulars: vessel ? {
+          displacement_t: vessel.displacement_t ?? null,
+          kg_lightship_m: vessel.kg_lightship_m ?? null,   // correct field name
+          gm_min_m: vessel.gm_min_m ?? null,               // correct field name
+          lbp_m: vessel.lbp_m ?? null,
+          beam_m: vessel.beam_m ?? null,
+          draft_operating_m: vessel.draft_operating_m ?? null,
+        } : null,
+        analysis: stabResult ? {
+          total_deck_load_t: stabResult.total_deck_load_t,
+          displacement_loaded_t: stabResult.displacement_loaded_t,
+          kg_loaded_m: stabResult.kg_loaded_m,
+          gm_loaded_m: stabResult.gm_loaded_m,
+          gm_ok: stabResult.gm_ok,
+          trim_angle_deg: stabResult.trim_angle_deg,
+          trim_ok: stabResult.trim_ok,
+          list_angle_deg: stabResult.list_angle_deg,
+          list_ok: stabResult.list_ok,
+          all_ok: stabResult.all_ok,
+          calculated_at: stabResult.calculated_at,
+        } : { message: 'No stability analysis saved. Go to the Stability tab to run it.' },
       }
     }
 
     case 'get_lowering_results': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+
+      const { data: loweringResult } = await supabase
+        .from('lowering_result')
+        .select('*')
+        .eq('project_equipment_id', found.pe.id)
+        .maybeSingle()
+
+      if (!loweringResult) {
+        return {
+          equipment: found.matchedName,
+          message: 'No lowering analysis saved yet. Go to the Lowering tab to run it.',
+        }
+      }
+
       return {
         equipment: found.matchedName,
-        max_depth_m: 1200,
-        wire_utilization_pct: 75.5,
-        landing_velocity_m_s: 0.5,
-        current_force_kN: 45.2,
-        status: 'Feasible',
+        hook_load_submerged_t: loweringResult.hook_load_submerged_t,
+        buoyancy_force_kn: loweringResult.buoyancy_force_kn,
+        max_current_drag_kn: loweringResult.max_current_drag_kn,
+        max_current_depth_m: loweringResult.max_current_depth_m,
+        residual_hook_tension_t: loweringResult.residual_hook_tension_t,
+        residual_ok: loweringResult.residual_ok,
+        landing_load_t: loweringResult.landing_load_t,
+        status: loweringResult.residual_ok ? 'OK — Cable taut throughout lowering' : 'NOK — Risk of slack wire',
+        calculated_at: loweringResult.calculated_at,
       }
     }
 
@@ -1033,7 +1131,7 @@ Deno.serve(async (req) => {
         parts: [{ text: m.content }],
       }))
 
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro:generateContent?key=${GEMINI_API_KEY}`
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview-customtools:generateContent?key=${GEMINI_API_KEY}`
 
     // Track tool calls made during this conversation turn
     const toolNotifications: string[] = []
