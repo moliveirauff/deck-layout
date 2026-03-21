@@ -1,9 +1,10 @@
 import { create } from 'zustand'
-import type { Project, ProjectInsert } from '../types/database'
+import type { Project, ProjectInsert, ProjectUpdate } from '../types/database'
 import {
   loadProjects as fetchProjects,
   loadProject as fetchProject,
   createProject as persistCreate,
+  updateProject as persistUpdate,
   deleteProject as persistDelete,
 } from '../lib/supabase/projectService'
 
@@ -14,18 +15,11 @@ type ProjectState = {
   isSaving: boolean
   error: string | null
 
-  /** Load all projects for the project list page. */
   loadProjects: () => Promise<void>
-  /** Load a single project and set it as the active project. */
   loadProject: (id: string) => Promise<void>
-  /**
-   * Create a new project with an auto-generated vessel snapshot.
-   * Adds the result to the project list and sets it as active.
-   */
   createProject: (project: ProjectInsert) => Promise<Project | null>
-  /** Delete a project and remove it from the local list. */
+  updateProject: (id: string, updates: Partial<ProjectUpdate>) => Promise<void>
   deleteProject: (id: string) => Promise<void>
-  /** Clear the active project (e.g. when navigating away from project workspace). */
   clearActiveProject: () => void
 }
 
@@ -71,6 +65,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }))
     }
     return data
+  },
+
+  updateProject: async (id, updates) => {
+    set({ isSaving: true, error: null })
+    const { data, error } = await persistUpdate(id, updates)
+    if (error) {
+      set({ isSaving: false, error })
+      return
+    }
+    if (data) {
+      set((state) => ({
+        activeProject: state.activeProject?.id === id ? data : state.activeProject,
+        projects: state.projects.map((p) => (p.id === id ? data : p)),
+        isSaving: false,
+      }))
+    }
   },
 
   deleteProject: async (id) => {

@@ -151,3 +151,13 @@ async function buildVesselSnapshot(
     crane_curve_points: curveResult.data ?? [],
   }
 }
+
+export async function updateProject(id: string, updates: Partial<Project>): ServiceResult<Project> {
+  try {
+    const { data, error } = await supabase.from('project').update(updates).eq('id', id).select().single()
+    if (error) return { data: null, error: error.message }
+    return { data: data as Project, error: null }
+  } catch {
+    return { data: null, error: 'Network error' }
+  }
+}
