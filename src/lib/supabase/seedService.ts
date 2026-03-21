@@ -95,11 +95,12 @@ const SKANDI_CRANE = [
 // ── Equipment library ─────────────────────────────────────────────────────────
 
 const EQUIPMENT_ITEMS = [
-  { name: 'Manifold M1',   description: '6-slot production manifold, Búzios field',        geometry_type: 'box'      as const, length_m: 5.0,  width_m: 3.0, height_m: 2.5, dry_weight_t: 25.0, submerged_volume_m3: null },
-  { name: 'PLET-A',        description: 'Production PLET with hub connection',              geometry_type: 'box'      as const, length_m: 3.0,  width_m: 2.0, height_m: 1.5, dry_weight_t:  8.0, submerged_volume_m3: null },
-  { name: 'Template T1',   description: 'Subsea template, 4-well',                          geometry_type: 'box'      as const, length_m: 8.0,  width_m: 6.0, height_m: 3.0, dry_weight_t: 45.0, submerged_volume_m3: null },
-  { name: 'Jumper Spool',  description: 'Rigid jumper spool, 8-inch bore',                  geometry_type: 'cylinder' as const, length_m: 12.0, width_m: 0.5, height_m: 0.5, dry_weight_t:  3.5, submerged_volume_m3: null },
-  { name: 'PLET-B',        description: 'Gas injection PLET',                               geometry_type: 'box'      as const, length_m: 2.5,  width_m: 1.8, height_m: 1.2, dry_weight_t:  6.0, submerged_volume_m3: null },
+  //                                                                                                                              cog_x  cog_y  cog_z  rig_wt  cont%
+  { name: 'Manifold M1',  description: '6-slot production manifold, Búzios field',       geometry_type: 'box'      as const, length_m: 5.0,  width_m: 3.0, height_m: 2.5, dry_weight_t: 25.0, submerged_volume_m3: 28.0,  cog_x_m: 0, cog_y_m: 0, cog_z_m: 1.25, rigging_weight_t: 1.5, contingency_pct: 10 },
+  { name: 'PLET-A',       description: 'Production PLET with hub connection',             geometry_type: 'box'      as const, length_m: 3.0,  width_m: 2.0, height_m: 1.5, dry_weight_t:  8.0, submerged_volume_m3:  6.5,  cog_x_m: 0, cog_y_m: 0, cog_z_m: 0.75, rigging_weight_t: 0.8, contingency_pct: 10 },
+  { name: 'Template T1',  description: 'Subsea template, 4-well',                         geometry_type: 'box'      as const, length_m: 8.0,  width_m: 6.0, height_m: 3.0, dry_weight_t: 45.0, submerged_volume_m3: 95.0,  cog_x_m: 0, cog_y_m: 0, cog_z_m: 1.50, rigging_weight_t: 3.0, contingency_pct: 10 },
+  { name: 'Jumper Spool', description: 'Rigid jumper spool, 8-inch bore',                 geometry_type: 'cylinder' as const, length_m: 12.0, width_m: 0.5, height_m: 0.5, dry_weight_t:  3.5, submerged_volume_m3:  2.4,  cog_x_m: 0, cog_y_m: 0, cog_z_m: 0.25, rigging_weight_t: 0.3, contingency_pct:  5 },
+  { name: 'PLET-B',       description: 'Gas injection PLET',                              geometry_type: 'box'      as const, length_m: 2.5,  width_m: 1.8, height_m: 1.2, dry_weight_t:  6.0, submerged_volume_m3:  4.0,  cog_x_m: 0, cog_y_m: 0, cog_z_m: 0.60, rigging_weight_t: 0.6, contingency_pct: 10 },
 ]
 
 // ── RAO data (Beam seas 270°) ─────────────────────────────────────────────────
@@ -216,6 +217,8 @@ export async function seedDemoData(): Promise<SeedResult> {
         // TRD-16: Vessel stability & geometry
         lbp_m: 145.0, draft_operating_m: 8.5, beam_m: 32.0, displacement_t: 18500, dp_class: 'DP2',
         kg_lightship_m: 12.0, gm_min_m: 1.0, deck_elevation_m: 15.0,
+        crane_min_radius_m: 8.0, crane_max_hook_height_m: 42.0,
+        roll_natural_period_s: 10.5, pitch_natural_period_s: 8.2,
       },
     )
     if (e1 || !sevenSeas) return { ok: false, error: e1 ?? 'Failed to create Seven Seas' }
@@ -233,6 +236,8 @@ export async function seedDemoData(): Promise<SeedResult> {
         // TRD-16: Vessel stability & geometry
         lbp_m: 156.0, draft_operating_m: 9.2, beam_m: 34.0, displacement_t: 21500, dp_class: 'DP3',
         kg_lightship_m: 12.0, gm_min_m: 1.0, deck_elevation_m: 15.0,
+        crane_min_radius_m: 10.0, crane_max_hook_height_m: 52.0,
+        roll_natural_period_s: 11.0, pitch_natural_period_s: 8.8,
       },
     )
     if (e2 || !skandi) return { ok: false, error: e2 ?? 'Failed to create Skandi Búzios' }
@@ -317,6 +322,10 @@ export async function seedDemoData(): Promise<SeedResult> {
         vessel_id: sevenSeas.id,
         status: 'draft',
         vessel_snapshot: snapshot,
+        transit_hs_m: 2.5,
+        transit_tp_s: 10.0,
+        transit_heading_deg: 180,
+        transit_duration_h: 24,
       },
     )
     if (e3 || !project) return { ok: false, error: e3 ?? 'Failed to create project' }
@@ -330,16 +339,19 @@ export async function seedDemoData(): Promise<SeedResult> {
         equipment_id: eqIds['Manifold M1'], label: 'Manifold M1 - Well A',
         deck_pos_x: 20, deck_pos_y: 12.5, deck_rotation_deg: 0,
         overboard_pos_x: 75, overboard_pos_y: -5,
+        installation_sequence: 1,
       },
       {
         equipment_id: eqIds['PLET-A'], label: 'PLET-A - Well A Prod',
         deck_pos_x: 12, deck_pos_y: 8, deck_rotation_deg: 0,
         overboard_pos_x: 72, overboard_pos_y: -4,
+        installation_sequence: 2,
       },
       {
         equipment_id: eqIds['PLET-B'], label: 'PLET-B - Well A Gas',
         deck_pos_x: 12, deck_pos_y: 16, deck_rotation_deg: 90,
         overboard_pos_x: 72, overboard_pos_y: -6,
+        installation_sequence: 3,
       },
     ]
 
@@ -382,6 +394,8 @@ export async function seedDemoData(): Promise<SeedResult> {
           crane_radius_overboard_m: radius,
           crane_capacity_overboard_t: capacity,
           capacity_check_overboard_ok: capacity >= dryWeight,
+          hook_load_t: dryWeight * 1.1, // 10% contingency applied
+          installation_sequence: p.installation_sequence,
         },
       )
       if (peErr) return { ok: false, error: peErr }
