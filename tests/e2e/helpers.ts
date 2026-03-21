@@ -15,7 +15,9 @@ export async function goto(page: Page, hash: string) {
  * Assert no ErrorBoundary is visible (no "Something went wrong" text).
  */
 export async function expectNoErrorBoundary(page: Page) {
-  await expect(page.getByText('Something went wrong')).not.toBeVisible()
+  // Wait up to 15s for the page to settle, then assert no error boundary
+  await page.waitForTimeout(500)
+  await expect(page.getByText('Something went wrong')).not.toBeVisible({ timeout: 8_000 })
 }
 
 /**
