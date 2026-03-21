@@ -6,6 +6,8 @@ type Props = {
   height: number
   weight: number
   geometryType: GeometryType
+  riggingWeight?: number
+  contingencyPct?: number
 }
 
 function fmt(n: number, decimals = 2): string {
@@ -23,8 +25,19 @@ function Row({ label, value, unit }: { label: string; value: string; unit: strin
   )
 }
 
+const RHO_SEA = 1025 // kg/m³
+const G = 9.81 // m/s²
+
 /** Read-only panel showing geometry-derived properties for an equipment item. */
-export function CalculatedProperties({ length, width, height, weight, geometryType }: Props) {
+export function CalculatedProperties({
+  length,
+  width,
+  height,
+  weight,
+  geometryType,
+  riggingWeight = 0,
+  contingencyPct = 5,
+}: Props) {
   const valid = length > 0 && width > 0 && height > 0 && weight > 0
 
   const volume =
@@ -39,6 +52,12 @@ export function CalculatedProperties({ length, width, height, weight, geometryTy
   const areaX = width * height
   const areaY = length * height
   const areaZ = length * width
+
+  // Hook Load Estimate (t): dry_weight + rigging_weight + (dry_weight × contingency_pct/100)
+  const hookLoadEstimate = weight + riggingWeight + (weight * contingencyPct) / 100
+
+  // Buoyancy (kN): ρ × g × volume
+  const buoyancyKN = (RHO_SEA * G * volume) / 1000
 
   if (!valid) {
     return (
@@ -69,6 +88,16 @@ export function CalculatedProperties({ length, width, height, weight, geometryTy
         <Row label="Projected Area X  (W×H)" value={fmt(areaX)} unit="m²" />
         <Row label="Projected Area Y  (L×H)" value={fmt(areaY)} unit="m²" />
         <Row label="Projected Area Z  (L×W)" value={fmt(areaZ)} unit="m²" />
+        <Row
+          label="Hook Load Estimate"
+          value={fmt(hookLoadEstimate)}
+          unit="t"
+        />
+        <Row
+          label={`Buoyancy  (ρ·g·V)`}
+          value={fmt(buoyancyKN)}
+          unit="kN"
+        />
       </div>
     </div>
   )

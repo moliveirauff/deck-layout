@@ -48,6 +48,8 @@ export default function EquipmentEditorPage() {
   const height = parseFloat(values.height_m) || 0
   const weight = parseFloat(values.dry_weight_t) || 0
   const geometryType = (values.geometry_type || 'box') as GeometryType
+  const riggingWeight = parseFloat(values.rigging_weight_t) || 0
+  const contingencyPct = parseFloat(values.contingency_pct) || 5
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -100,6 +102,8 @@ export default function EquipmentEditorPage() {
               height={height}
               weight={weight}
               geometryType={geometryType}
+              riggingWeight={riggingWeight}
+              contingencyPct={contingencyPct}
             />
           </div>
         </div>

@@ -112,6 +112,7 @@ export default function VesselEditorPage() {
               <TabsTrigger value="crane">Crane</TabsTrigger>
               <TabsTrigger value="crane-curve">Crane Curve</TabsTrigger>
               <TabsTrigger value="rao">RAO</TabsTrigger>
+              <TabsTrigger value="stability">Stability</TabsTrigger>
             </TabsList>
 
             <div className="flex-1 overflow-auto">
@@ -142,6 +143,9 @@ export default function VesselEditorPage() {
               </TabsContent>
               <TabsContent value="rao">
                 <VesselRaoTab vesselId={vesselId ?? null} />
+              </TabsContent>
+              <TabsContent value="stability">
+                <StabilityTab values={values} errors={fieldErrors} onChange={handleChange} />
               </TabsContent>
             </div>
           </Tabs>
