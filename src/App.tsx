@@ -24,6 +24,7 @@ import SeaFasteningPage from './pages/projects/SeaFasteningPage'
 import StabilityPage from './pages/projects/StabilityPage'
 import LoweringPage from './pages/projects/LoweringPage'
 import AnalysisPage from './pages/projects/AnalysisPage'
+import RaoPage from './pages/projects/RaoPage'
 import WeatherPage from './pages/projects/WeatherPage'
 import Viewer3DPage from './pages/projects/Viewer3DPage'
 import ReportPage from './pages/projects/ReportPage'
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="rigging" element={<RiggingPage />} />
             <Route path="seafastening" element={<SeaFasteningPage />} />
             <Route path="stability" element={<StabilityPage />} />
+            <Route path="rao" element={<RaoPage />} />
             <Route path="analysis" element={<AnalysisPage />} />
             <Route path="weather" element={<WeatherPage />} />
             <Route path="lowering" element={<LoweringPage />} />

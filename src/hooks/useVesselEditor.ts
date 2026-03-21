@@ -10,6 +10,7 @@ import {
   saveDeckLoadZones,
   saveCraneCurve,
 } from '../lib/supabase/vesselService'
+import { refreshAllSnapshotsForVessel } from '../lib/supabase/projectService'
 import { vesselSchema } from '../validation/schemas'
 import type { Vessel, VesselType, CraneType } from '../types/database'
 
@@ -307,10 +308,15 @@ export function useVesselEditor() {
     })))
     if (curveErr) { setNotification({ msg: `Crane curve save failed: ${curveErr}`, ok: false }); setSaving(false); return }
 
+    // Propagate changes to all projects that use this vessel
+    if (!isNew) {
+      void refreshAllSnapshotsForVessel(vid)
+    }
+
     if (isNew) {
       navigate(`/vessels/${vid}`)
     } else {
-      setNotification({ msg: 'Vessel saved successfully.', ok: true })
+      setNotification({ msg: 'Vessel saved — all project snapshots updated.', ok: true })
       setTimeout(() => setNotification(null), 3000)
     }
     setSaving(false)

@@ -76,11 +76,14 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
     return craneCurve.find((p) => p.radius_m === maxR)?.capacity_t ?? null
   }, [craneCurve, maxR])
 
-  const pX = vessel?.crane_pedestal_x ?? 0
-  const pY = vessel?.crane_pedestal_y ?? 0
-  const sMin = vessel?.crane_slew_min_deg ?? 0
-  const sMax = vessel?.crane_slew_max_deg ?? 360
-  const minR = vessel?.crane_min_radius_m ?? 0
+  // Guard against NaN/null from in-progress form edits
+  const safeNum = (v: number | null | undefined, fallback = 0) =>
+    Number.isFinite(v as number) ? (v as number) : fallback
+  const pX = safeNum(vessel?.crane_pedestal_x)
+  const pY = safeNum(vessel?.crane_pedestal_y)
+  const sMin = safeNum(vessel?.crane_slew_min_deg, 0)
+  const sMax = safeNum(vessel?.crane_slew_max_deg, 360)
+  const minR = safeNum(vessel?.crane_min_radius_m, 0)
 
   const selectedItem = placed.find((p) => p.id === selectedId)
   const showOverboard = craneToggle === 'overboard' || craneToggle === 'both'

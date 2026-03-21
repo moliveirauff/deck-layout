@@ -106,6 +106,36 @@ export async function updateProjectStatus(
  * Refresh the vessel_snapshot on a project from the current live vessel record.
  * Call this when the user explicitly wants to pick up vessel master changes.
  */
+/**
+ * Refresh vessel_snapshot for ALL projects that use a given vessel.
+ * Call this after editing/saving a vessel to propagate changes.
+ */
+export async function refreshAllSnapshotsForVessel(
+  vesselId: string,
+): Promise<{ refreshed: number; error: string | null }> {
+  try {
+    const { data: projects, error: listErr } = await supabase
+      .from('project')
+      .select('id')
+      .eq('vessel_id', vesselId)
+    if (listErr) return { refreshed: 0, error: listErr.message }
+    if (!projects || projects.length === 0) return { refreshed: 0, error: null }
+
+    const snapshot = await buildVesselSnapshot(vesselId)
+    if (!snapshot) return { refreshed: 0, error: 'Could not build vessel snapshot' }
+
+    const { error: updateErr } = await supabase
+      .from('project')
+      .update({ vessel_snapshot: snapshot })
+      .eq('vessel_id', vesselId)
+    if (updateErr) return { refreshed: 0, error: updateErr.message }
+
+    return { refreshed: projects.length, error: null }
+  } catch {
+    return { refreshed: 0, error: 'Network error' }
+  }
+}
+
 export async function refreshVesselSnapshot(
   projectId: string,
   vesselId: string,
