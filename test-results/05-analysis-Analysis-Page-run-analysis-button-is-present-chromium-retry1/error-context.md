@@ -1,0 +1,376 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]: DeckLayout
+    - navigation [ref=e6]:
+      - link "Vessels" [ref=e7] [cursor=pointer]:
+        - /url: "#/vessels"
+      - link "Equipment" [ref=e8] [cursor=pointer]:
+        - /url: "#/equipment"
+      - link "Rigging" [ref=e9] [cursor=pointer]:
+        - /url: "#/rigging"
+      - link "Projects" [ref=e10] [cursor=pointer]:
+        - /url: "#/projects"
+  - main [ref=e11]:
+    - generic [ref=e12]:
+      - complementary [ref=e13]:
+        - generic [ref=e14]:
+          - paragraph [ref=e15]: Project
+          - paragraph [ref=e16]: Búzios PLET Installation Campaign
+        - navigation [ref=e17]:
+          - link "Overview" [ref=e18] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03"
+            - img [ref=e19]
+            - text: Overview
+          - link "Deck Layout" [ref=e24] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/deck"
+            - img [ref=e25]
+            - text: Deck Layout
+          - link "Rigging" [ref=e27] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/rigging"
+            - img [ref=e28]
+            - text: Rigging
+          - link "Sea-Fastening" [ref=e31] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/seafastening"
+            - img [ref=e32]
+            - text: Sea-Fastening
+          - link "Stability" [ref=e35] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/stability"
+            - img [ref=e36]
+            - text: Stability
+          - link "RAO" [ref=e40] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/rao"
+            - img [ref=e41]
+            - text: RAO
+          - link "Analysis" [ref=e45] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/analysis"
+            - img [ref=e46]
+            - text: Analysis
+          - link "Lowering" [ref=e48] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/lowering"
+            - img [ref=e49]
+            - text: Lowering
+          - link "Weather Window" [ref=e51] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/weather"
+            - img [ref=e52]
+            - text: Weather Window
+          - link "3D View" [ref=e57] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/3d"
+            - img [ref=e58]
+            - text: 3D View
+          - link "Report" [ref=e61] [cursor=pointer]:
+            - /url: "#/projects/2cb2468a-9fb6-4fb4-9ac4-7242a9e26c03/report"
+            - img [ref=e62]
+            - text: Report
+        - generic [ref=e65]:
+          - paragraph [ref=e66]: Seven Seas
+          - generic [ref=e67]: draft
+          - paragraph [ref=e68]: 3 items
+      - generic [ref=e71]:
+        - generic [ref=e72]:
+          - heading "Analysis" [level=1] [ref=e73]
+          - button "Run All Equipment" [ref=e74] [cursor=pointer]
+        - generic [ref=e75]:
+          - generic [ref=e76]: Equipment
+          - combobox [ref=e77]:
+            - option "Manifold M1 - Well A" [selected]
+            - option "PLET-A - Well A Prod"
+            - option "PLET-B - Well A Gas"
+          - button "Run Analysis" [ref=e78] [cursor=pointer]
+        - generic [ref=e79]:
+          - generic [ref=e80]:
+            - paragraph [ref=e81]: Input Summary
+            - generic [ref=e82]:
+              - generic [ref=e83]: Dry weight
+              - generic [ref=e84]: 25.0 t
+            - generic [ref=e85]:
+              - generic [ref=e86]: Geometry
+              - generic [ref=e87]: Box 5×3×2.5 m
+            - generic [ref=e88]:
+              - generic [ref=e89]: Crane capacity (overboard)
+              - generic [ref=e90]: 267 t
+            - generic [ref=e91]:
+              - generic [ref=e92]: Crane radius (overboard)
+              - generic [ref=e93]: 18.8 m
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - generic [ref=e96]: Crane tip heave (sig.)
+                - generic [ref=e97]: 5.20 m
+              - generic [ref=e98]:
+                - generic [ref=e99]: Crane tip lateral (sig.)
+                - generic [ref=e100]: 9.65 m
+          - generic [ref=e101]:
+            - paragraph [ref=e102]: Hydrodynamic Coefficients(auto-calculated from geometry)
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - generic [ref=e105]: Cd_x
+                - generic [ref=e106]: "1.20"
+              - generic [ref=e107]:
+                - generic [ref=e108]: Area_x
+                - generic [ref=e109]: 7.50 m²
+              - generic [ref=e110]:
+                - generic [ref=e111]: Cd_y
+                - generic [ref=e112]: "1.20"
+              - generic [ref=e113]:
+                - generic [ref=e114]: Area_y
+                - generic [ref=e115]: 12.50 m²
+              - generic [ref=e116]:
+                - generic [ref=e117]: Cd_z
+                - generic [ref=e118]: "1.40"
+              - generic [ref=e119]:
+                - generic [ref=e120]: Area_z
+                - generic [ref=e121]: 15.00 m²
+              - generic [ref=e122]:
+                - generic [ref=e123]: Ca
+                - generic [ref=e124]: "0.90"
+              - generic [ref=e125]:
+                - generic [ref=e126]: Volume
+                - generic [ref=e127]: 37.50 m³
+              - generic [ref=e128]:
+                - generic [ref=e129]: Cs
+                - generic [ref=e130]: "5.00"
+        - generic [ref=e131]:
+          - heading "Sea State Operability Table" [level=2] [ref=e132]
+          - paragraph [ref=e133]: Tp (s) across columns, Hs (m) down rows. Values show utilization %.
+          - generic [ref=e134]: Run analysis to see the operability grid
+        - generic [ref=e135]:
+          - generic [ref=e136]:
+            - heading "Scatter Diagram Input" [level=2] [ref=e137]
+            - table [ref=e140]:
+              - rowgroup [ref=e141]:
+                - row "Hs \\ Tp (s) 4 6 8 10 12 14 16 18" [ref=e142]:
+                  - columnheader "Hs \\ Tp (s)" [ref=e143]
+                  - columnheader "4" [ref=e144]
+                  - columnheader "6" [ref=e145]
+                  - columnheader "8" [ref=e146]
+                  - columnheader "10" [ref=e147]
+                  - columnheader "12" [ref=e148]
+                  - columnheader "14" [ref=e149]
+                  - columnheader "16" [ref=e150]
+                  - columnheader "18" [ref=e151]
+              - rowgroup [ref=e152]:
+                - row "0.50 0.5 1.5 2 1.5 0.8 0.3 0.1" [ref=e153]:
+                  - cell "0.50" [ref=e154]
+                  - cell "0.5" [ref=e155]:
+                    - spinbutton [ref=e156]: "0.5"
+                  - cell "1.5" [ref=e157]:
+                    - spinbutton [ref=e158]: "1.5"
+                  - cell "2" [ref=e159]:
+                    - spinbutton [ref=e160]: "2"
+                  - cell "1.5" [ref=e161]:
+                    - spinbutton [ref=e162]: "1.5"
+                  - cell "0.8" [ref=e163]:
+                    - spinbutton [ref=e164]: "0.8"
+                  - cell "0.3" [ref=e165]:
+                    - spinbutton [ref=e166]: "0.3"
+                  - cell "0.1" [ref=e167]:
+                    - spinbutton [ref=e168]: "0.1"
+                  - cell [ref=e169]:
+                    - spinbutton [ref=e170]
+                - row "1.00 0.8 3.5 5.5 4.5 2.5 1 0.3 0.1" [ref=e171]:
+                  - cell "1.00" [ref=e172]
+                  - cell "0.8" [ref=e173]:
+                    - spinbutton [ref=e174]: "0.8"
+                  - cell "3.5" [ref=e175]:
+                    - spinbutton [ref=e176]: "3.5"
+                  - cell "5.5" [ref=e177]:
+                    - spinbutton [ref=e178]: "5.5"
+                  - cell "4.5" [ref=e179]:
+                    - spinbutton [ref=e180]: "4.5"
+                  - cell "2.5" [ref=e181]:
+                    - spinbutton [ref=e182]: "2.5"
+                  - cell "1" [ref=e183]:
+                    - spinbutton [ref=e184]: "1"
+                  - cell "0.3" [ref=e185]:
+                    - spinbutton [ref=e186]: "0.3"
+                  - cell "0.1" [ref=e187]:
+                    - spinbutton [ref=e188]: "0.1"
+                - row "1.50 0.3 2.8 6.5 6 4 1.8 0.5 0.1" [ref=e189]:
+                  - cell "1.50" [ref=e190]
+                  - cell "0.3" [ref=e191]:
+                    - spinbutton [ref=e192]: "0.3"
+                  - cell "2.8" [ref=e193]:
+                    - spinbutton [ref=e194]: "2.8"
+                  - cell "6.5" [ref=e195]:
+                    - spinbutton [ref=e196]: "6.5"
+                  - cell "6" [ref=e197]:
+                    - spinbutton [ref=e198]: "6"
+                  - cell "4" [ref=e199]:
+                    - spinbutton [ref=e200]: "4"
+                  - cell "1.8" [ref=e201]:
+                    - spinbutton [ref=e202]: "1.8"
+                  - cell "0.5" [ref=e203]:
+                    - spinbutton [ref=e204]: "0.5"
+                  - cell "0.1" [ref=e205]:
+                    - spinbutton [ref=e206]: "0.1"
+                - row "2.00 0.1 1.5 4.5 5.5 4.5 2.2 0.8 0.2" [ref=e207]:
+                  - cell "2.00" [ref=e208]
+                  - cell "0.1" [ref=e209]:
+                    - spinbutton [ref=e210]: "0.1"
+                  - cell "1.5" [ref=e211]:
+                    - spinbutton [ref=e212]: "1.5"
+                  - cell "4.5" [ref=e213]:
+                    - spinbutton [ref=e214]: "4.5"
+                  - cell "5.5" [ref=e215]:
+                    - spinbutton [ref=e216]: "5.5"
+                  - cell "4.5" [ref=e217]:
+                    - spinbutton [ref=e218]: "4.5"
+                  - cell "2.2" [ref=e219]:
+                    - spinbutton [ref=e220]: "2.2"
+                  - cell "0.8" [ref=e221]:
+                    - spinbutton [ref=e222]: "0.8"
+                  - cell "0.2" [ref=e223]:
+                    - spinbutton [ref=e224]: "0.2"
+                - row "2.50 0.5 2.5 4 3.8 2.5 1.2 0.3" [ref=e225]:
+                  - cell "2.50" [ref=e226]
+                  - cell [ref=e227]:
+                    - spinbutton [ref=e228]
+                  - cell "0.5" [ref=e229]:
+                    - spinbutton [ref=e230]: "0.5"
+                  - cell "2.5" [ref=e231]:
+                    - spinbutton [ref=e232]: "2.5"
+                  - cell "4" [ref=e233]:
+                    - spinbutton [ref=e234]: "4"
+                  - cell "3.8" [ref=e235]:
+                    - spinbutton [ref=e236]: "3.8"
+                  - cell "2.5" [ref=e237]:
+                    - spinbutton [ref=e238]: "2.5"
+                  - cell "1.2" [ref=e239]:
+                    - spinbutton [ref=e240]: "1.2"
+                  - cell "0.3" [ref=e241]:
+                    - spinbutton [ref=e242]: "0.3"
+                - row "3.00 0.1 1 2.5 3 2.2 1 0.4" [ref=e243]:
+                  - cell "3.00" [ref=e244]
+                  - cell [ref=e245]:
+                    - spinbutton [ref=e246]
+                  - cell "0.1" [ref=e247]:
+                    - spinbutton [ref=e248]: "0.1"
+                  - cell "1" [ref=e249]:
+                    - spinbutton [ref=e250]: "1"
+                  - cell "2.5" [ref=e251]:
+                    - spinbutton [ref=e252]: "2.5"
+                  - cell "3" [ref=e253]:
+                    - spinbutton [ref=e254]: "3"
+                  - cell "2.2" [ref=e255]:
+                    - spinbutton [ref=e256]: "2.2"
+                  - cell "1" [ref=e257]:
+                    - spinbutton [ref=e258]: "1"
+                  - cell "0.4" [ref=e259]:
+                    - spinbutton [ref=e260]: "0.4"
+                - row "3.50 0.3 1.2 2 1.5 0.8 0.3" [ref=e261]:
+                  - cell "3.50" [ref=e262]
+                  - cell [ref=e263]:
+                    - spinbutton [ref=e264]
+                  - cell [ref=e265]:
+                    - spinbutton [ref=e266]
+                  - cell "0.3" [ref=e267]:
+                    - spinbutton [ref=e268]: "0.3"
+                  - cell "1.2" [ref=e269]:
+                    - spinbutton [ref=e270]: "1.2"
+                  - cell "2" [ref=e271]:
+                    - spinbutton [ref=e272]: "2"
+                  - cell "1.5" [ref=e273]:
+                    - spinbutton [ref=e274]: "1.5"
+                  - cell "0.8" [ref=e275]:
+                    - spinbutton [ref=e276]: "0.8"
+                  - cell "0.3" [ref=e277]:
+                    - spinbutton [ref=e278]: "0.3"
+                - row "4.00 0.1 0.5 1 1 0.5 0.2" [ref=e279]:
+                  - cell "4.00" [ref=e280]
+                  - cell [ref=e281]:
+                    - spinbutton [ref=e282]
+                  - cell [ref=e283]:
+                    - spinbutton [ref=e284]
+                  - cell "0.1" [ref=e285]:
+                    - spinbutton [ref=e286]: "0.1"
+                  - cell "0.5" [ref=e287]:
+                    - spinbutton [ref=e288]: "0.5"
+                  - cell "1" [ref=e289]:
+                    - spinbutton [ref=e290]: "1"
+                  - cell "1" [ref=e291]:
+                    - spinbutton [ref=e292]: "1"
+                  - cell "0.5" [ref=e293]:
+                    - spinbutton [ref=e294]: "0.5"
+                  - cell "0.2" [ref=e295]:
+                    - spinbutton [ref=e296]: "0.2"
+                - row "4.50 0.2 0.5 0.5 0.3 0.1" [ref=e297]:
+                  - cell "4.50" [ref=e298]
+                  - cell [ref=e299]:
+                    - spinbutton [ref=e300]
+                  - cell [ref=e301]:
+                    - spinbutton [ref=e302]
+                  - cell [ref=e303]:
+                    - spinbutton [ref=e304]
+                  - cell "0.2" [ref=e305]:
+                    - spinbutton [ref=e306]: "0.2"
+                  - cell "0.5" [ref=e307]:
+                    - spinbutton [ref=e308]: "0.5"
+                  - cell "0.5" [ref=e309]:
+                    - spinbutton [ref=e310]: "0.5"
+                  - cell "0.3" [ref=e311]:
+                    - spinbutton [ref=e312]: "0.3"
+                  - cell "0.1" [ref=e313]:
+                    - spinbutton [ref=e314]: "0.1"
+                - row "5.00 0.1 0.2 0.3 0.2 0.1" [ref=e315]:
+                  - cell "5.00" [ref=e316]
+                  - cell [ref=e317]:
+                    - spinbutton [ref=e318]
+                  - cell [ref=e319]:
+                    - spinbutton [ref=e320]
+                  - cell [ref=e321]:
+                    - spinbutton [ref=e322]
+                  - cell "0.1" [ref=e323]:
+                    - spinbutton [ref=e324]: "0.1"
+                  - cell "0.2" [ref=e325]:
+                    - spinbutton [ref=e326]: "0.2"
+                  - cell "0.3" [ref=e327]:
+                    - spinbutton [ref=e328]: "0.3"
+                  - cell "0.2" [ref=e329]:
+                    - spinbutton [ref=e330]: "0.2"
+                  - cell "0.1" [ref=e331]:
+                    - spinbutton [ref=e332]: "0.1"
+              - rowgroup [ref=e333]:
+                - row "Total 103.1 %(should be ~100 %; warn if outside 98–102 %)" [ref=e334]:
+                  - cell "Total" [ref=e335]
+                  - cell "103.1 %(should be ~100 %; warn if outside 98–102 %)" [ref=e336]
+            - paragraph [ref=e337]: Total occurrence is 103.1 % — should be ~100 % (tolerance ±2 %)
+            - generic [ref=e338]:
+              - button "Paste from Excel" [ref=e339] [cursor=pointer]
+              - button "Clear" [ref=e340] [cursor=pointer]
+              - button "Save" [ref=e341] [cursor=pointer]
+          - generic [ref=e342]:
+            - heading "Operability Results" [level=2] [ref=e343]
+            - generic [ref=e344]: Run DNV analysis and save scatter diagram to see operability results
+          - generic [ref=e345]:
+            - heading "Scatter Diagram Overlay" [level=2] [ref=e346]
+            - generic [ref=e347]: Run DNV analysis for at least one equipment item to enable the overlay view
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - img
+            - generic: DeckLayout Assistant
+          - generic:
+            - button "Refresh project data":
+              - img
+            - button "Close chat":
+              - img
+        - generic:
+          - generic:
+            - paragraph: Ask me anything about this project — equipment weights, sea state limits, or run an analysis.
+            - generic:
+              - button "What's the status of all equipment?"
+              - 'button "Compare weights: 25t, 30t, 35t for Manifold M1"'
+              - button "What's the max Hs for each equipment?"
+              - button "Run analysis for all equipment"
+        - generic:
+          - generic:
+            - textbox "Ask the assistant…"
+            - button "Send" [disabled]:
+              - img
+          - paragraph: Ctrl+K to toggle · Enter to send
+      - button "Toggle AI chat" [ref=e348] [cursor=pointer]:
+        - img [ref=e349]
+```
