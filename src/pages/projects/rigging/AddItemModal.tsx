@@ -61,7 +61,7 @@ export function AddItemModal({ library, onAdd, onClose }: Props) {
                 >
                   <span>{item.name}</span>
                   <span className="flex gap-2">
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="secondary" className="text-xs border-slate-600 bg-slate-800 text-slate-300">
                       {item.rigging_type}
                     </Badge>
                     <span className="text-slate-400">WLL {item.wll_t} t</span>

@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Plus, Save } from 'lucide-react'
-import { useProjectStore } from '../../stores/useProjectStore'
 import { useDeckLayoutStore } from '../../stores/useDeckLayoutStore'
 import { useEquipmentStore } from '../../stores/useEquipmentStore'
 import { useRiggingStore } from '../../stores/useRiggingStore'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { Select } from '../../components/ui/select'
 import { Skeleton } from '../../components/ui/skeleton'
 import {
   calculateHookLoad,
@@ -31,7 +30,6 @@ import type { RiggingItem } from '../../types/database'
 export default function RiggingPage() {
   const { id: projectId } = useParams<{ id: string }>()
 
-  const activeProject = useProjectStore((s) => s.activeProject)
   const deckStore = useDeckLayoutStore()
   const equipStore = useEquipmentStore()
   const riggingStore = useRiggingStore()
@@ -49,7 +47,7 @@ export default function RiggingPage() {
   }, [projectId, deckStore])
 
   useEffect(() => {
-    void equipStore.loadItems()
+    void equipStore.loadEquipment()
   }, [equipStore])
 
   useEffect(() => {
@@ -148,17 +146,19 @@ export default function RiggingPage() {
         {isLoading ? (
           <Skeleton className="h-10 w-full bg-slate-700" />
         ) : (
-          <Select value={selectedPeId} onValueChange={setSelectedPeId}>
-            <SelectTrigger className="bg-slate-800 border-slate-600 text-white">
-              <SelectValue placeholder="Select equipment…" />
-            </SelectTrigger>
-            <SelectContent className="bg-slate-800 border-slate-700">
-              {peOptions.map(({ id, label }) => (
-                <SelectItem key={id} value={id} className="text-slate-200">
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
+          <Select
+            value={selectedPeId}
+            onChange={(e) => setSelectedPeId(e.target.value)}
+            className="bg-slate-800 border-slate-600 text-white"
+          >
+            <option value="" disabled className="text-slate-400">
+              Select equipment…
+            </option>
+            {peOptions.map(({ id, label }) => (
+              <option key={id} value={id} className="text-slate-200">
+                {label}
+              </option>
+            ))}
           </Select>
         )}
       </div>

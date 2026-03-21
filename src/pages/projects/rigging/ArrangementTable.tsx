@@ -45,7 +45,7 @@ export function ArrangementTable({ rows, onRemove }: Props) {
             >
               <td className="py-2 pr-3 font-medium text-slate-100">{row.riggingItem.name}</td>
               <td className="py-2 pr-3">
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="secondary" className="text-xs border-slate-600 bg-slate-800 text-slate-300">
                   {row.riggingItem.rigging_type}
                 </Badge>
               </td>

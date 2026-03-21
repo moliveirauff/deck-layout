@@ -19,6 +19,10 @@ import NewProjectPage from './pages/projects/NewProjectPage'
 import ProjectWorkspace from './pages/projects/ProjectWorkspace'
 import ProjectOverviewPage from './pages/projects/ProjectOverviewPage'
 import DeckLayoutPage from './pages/projects/DeckLayoutPage'
+import RiggingPage from './pages/projects/RiggingPage'
+import SeaFasteningPage from './pages/projects/SeaFasteningPage'
+import StabilityPage from './pages/projects/StabilityPage'
+import LoweringPage from './pages/projects/LoweringPage'
 import AnalysisPage from './pages/projects/AnalysisPage'
 import Viewer3DPage from './pages/projects/Viewer3DPage'
 import ReportPage from './pages/projects/ReportPage'
@@ -54,7 +58,11 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectWorkspace />}>
             <Route index element={<ProjectOverviewPage />} />
             <Route path="deck" element={<DeckLayoutPage />} />
+            <Route path="rigging" element={<RiggingPage />} />
+            <Route path="seafastening" element={<SeaFasteningPage />} />
+            <Route path="stability" element={<StabilityPage />} />
             <Route path="analysis" element={<AnalysisPage />} />
+            <Route path="lowering" element={<LoweringPage />} />
             <Route path="3d" element={<Viewer3DPage />} />
             <Route path="report" element={<ReportPage />} />
           </Route>
