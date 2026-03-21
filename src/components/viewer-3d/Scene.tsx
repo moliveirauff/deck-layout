@@ -32,7 +32,7 @@ type Props = {
 type FloatingCameraPreset = 'perspective' | 'top' | 'port' | 'bow' | 'stern' | null
 
 function CameraUpdater({ preset, cx, cz }: { preset: FloatingCameraPreset; cx: number; cz: number }) {
-  const { camera } = useThree()
+  const { camera, invalidate } = useThree()
   
   useEffect(() => {
     if (!preset) return
@@ -55,7 +55,8 @@ function CameraUpdater({ preset, cx, cz }: { preset: FloatingCameraPreset; cx: n
         break
     }
     camera.lookAt(t)
-  }, [preset, cx, cz, camera])
+    invalidate() // request one render frame — avoids full React re-render
+  }, [preset, cx, cz, camera, invalidate])
   return null
 }
 
@@ -78,8 +79,9 @@ export function Scene({ vessel, barriers, deckLoadZones, placed, libById, active
       <Canvas
         camera={{ position: [cx - 80, 80, cz - 60], fov: 55 }}
         shadows
-        gl={{ preserveDrawingBuffer: true }}
+        gl={{ preserveDrawingBuffer: true, antialias: true }}
         className="rounded-lg"
+        style={{ width: '100%', height: '100%' }}
       >
         <CameraUpdater preset={preset} cx={cx} cz={cz} />
         {/* Sky */}
@@ -91,7 +93,7 @@ export function Scene({ vessel, barriers, deckLoadZones, placed, libById, active
         <directionalLight position={[100, 200, 60]} intensity={1.2} castShadow shadow-mapSize={[2048, 2048]} />
         <hemisphereLight args={['#c8dff5', '#444444', 0.4]} />
 
-        <Suspense fallback={null}>
+        <Suspense fallback={<mesh><boxGeometry args={[1,1,1]} /><meshStandardMaterial color="#94a3b8" /></mesh>}>
           {/* Deck + barriers + load zones */}
           <DeckMesh
             vessel={vessel}

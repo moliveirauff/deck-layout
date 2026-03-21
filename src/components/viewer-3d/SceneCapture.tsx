@@ -26,8 +26,19 @@ export const SceneCapture = forwardRef<SceneCaptureApi, Props>(function SceneCap
 
   useImperativeHandle(ref, () => ({
     capture: () => {
-      gl.render(scene, camera)
-      return gl.domElement.toDataURL('image/png')
+      // Guard: canvas may be 0×0 if container is off-screen or not yet painted
+      const { width, height } = gl.domElement
+      if (width === 0 || height === 0) {
+        console.warn('[SceneCapture] Canvas has zero dimensions — skipping capture')
+        return ''
+      }
+      try {
+        gl.render(scene, camera)
+        return gl.domElement.toDataURL('image/png')
+      } catch (err) {
+        console.warn('[SceneCapture] toDataURL failed:', err)
+        return ''
+      }
     },
 
     setCamera: (preset, cx, cz) => {

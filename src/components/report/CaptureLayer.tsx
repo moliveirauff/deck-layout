@@ -95,15 +95,24 @@ function limitsToGridCells(limits: SeaStateLimit[]): GridCell[] {
 
 async function captureEl(el: HTMLElement | null): Promise<string | undefined> {
   if (!el) return undefined
+  // Guard: element must have non-zero dimensions
+  if (el.clientWidth === 0 || el.clientHeight === 0) {
+    console.warn('[CaptureLayer] captureEl: element has zero dimensions — skipping')
+    return undefined
+  }
   try {
     const canvas = await html2canvas(el, {
       backgroundColor: '#ffffff',
       scale: 1.5,
       logging: false,
       useCORS: true,
+      allowTaint: false,
+      ignoreElements: (node) => node.tagName === 'IFRAME', // skip iframes that may taint
     })
+    if (canvas.width === 0 || canvas.height === 0) return undefined
     return canvas.toDataURL('image/png')
-  } catch {
+  } catch (err) {
+    console.warn('[CaptureLayer] html2canvas failed:', err)
     return undefined
   }
 }
@@ -143,14 +152,20 @@ export const CaptureLayer = forwardRef<CaptureLayerApi, Props>(function CaptureL
       }
 
       if (sections.view3d) {
-        // Wait for sceneCaptureRef to be populated (Three.js canvas initialized)
-        const start = Date.now()
-        while (!sceneCaptureRef.current && Date.now() - start < 5000) {
-          await new Promise(r => setTimeout(r, 100))
-        }
-        await new Promise(r => setTimeout(r, 500)) // allow one render cycle
-        if (sceneCaptureRef.current) {
-          images.view3d = sceneCaptureRef.current.capture()
+        try {
+          // Wait for sceneCaptureRef to be populated (Three.js canvas initialized)
+          const start = Date.now()
+          while (!sceneCaptureRef.current && Date.now() - start < 5000) {
+            await new Promise(r => setTimeout(r, 100))
+          }
+          await new Promise(r => setTimeout(r, 800)) // allow WebGL to paint at least one frame
+          if (sceneCaptureRef.current) {
+            const dataUrl = sceneCaptureRef.current.capture()
+            if (dataUrl) images.view3d = dataUrl
+          }
+        } catch (err) {
+          console.warn('[CaptureLayer] 3D capture failed — skipping:', err)
+          // Report continues without 3D image
         }
       }
 
@@ -267,20 +282,23 @@ export const CaptureLayer = forwardRef<CaptureLayerApi, Props>(function CaptureL
         </div>
       ))}
 
-      {/* Hidden 3D scene for screenshot */}
+      {/* Hidden 3D scene for screenshot — explicit px dimensions required for WebGL */}
       {sections.view3d && (
-        <div style={{ ...HIDE, width: '640px', height: '380px' }}>
-          <Scene
-            vessel={data.vessel}
-            barriers={data.barriers}
-            deckLoadZones={data.deckLoadZones}
-            placed={data.placed}
-            libById={data.libById}
-            activePeId={data.placed[0]?.id ?? ''}
-            viewMode="both"
-            toggles={{ barriers: true, loadZones: true, grid: true, water: true, labels: false }}
-            captureRef={sceneCaptureRef}
-          />
+        <div style={{ ...HIDE, width: '640px', height: '380px', overflow: 'hidden' }}>
+          {/* Canvas must have explicit pixel dimensions — not %, not 'auto' */}
+          <div style={{ width: '640px', height: '380px', position: 'relative' }}>
+            <Scene
+              vessel={data.vessel}
+              barriers={data.barriers}
+              deckLoadZones={data.deckLoadZones}
+              placed={data.placed}
+              libById={data.libById}
+              activePeId={data.placed[0]?.id ?? ''}
+              viewMode="both"
+              toggles={{ barriers: true, loadZones: true, grid: true, water: true, labels: false }}
+              captureRef={sceneCaptureRef}
+            />
+          </div>
         </div>
       )}
     </>

@@ -93,8 +93,9 @@ export function Equipment3DPreview({ length, width, height, geometryType }: Prop
   return (
     <Canvas
       camera={{ position: [7, 5, 7], fov: 45 }}
+      gl={{ preserveDrawingBuffer: true, antialias: true }}
       className="h-full w-full"
-      style={{ background: '#f9fafb' }}
+      style={{ background: '#f9fafb', width: '100%', height: '100%' }}
     >
       <ambientLight intensity={0.7} />
       <directionalLight position={[5, 8, 5]} intensity={0.8} />
