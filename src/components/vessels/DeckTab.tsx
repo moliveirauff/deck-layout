@@ -2,14 +2,22 @@ import { Input } from '../ui/input'
 import { Select } from '../ui/select'
 import { Textarea } from '../ui/textarea'
 import { FormField } from './FormField'
+import { VesselParticularsSection } from './VesselParticularsSection'
+import type { VesselFormState } from '../../hooks/useVesselEditor'
 
-type DeckValues = {
-  name: string
-  vessel_type: string
-  description: string
-  deck_length_m: string
-  deck_width_m: string
-}
+type DeckValues = Pick<
+  VesselFormState,
+  | 'name'
+  | 'vessel_type'
+  | 'description'
+  | 'deck_length_m'
+  | 'deck_width_m'
+  | 'lbp_m'
+  | 'draft_operating_m'
+  | 'beam_m'
+  | 'displacement_t'
+  | 'dp_class'
+>
 
 type DeckTabProps = {
   values: DeckValues
@@ -84,6 +92,8 @@ export function DeckTab({ values, errors, onChange }: DeckTabProps) {
           />
         </FormField>
       </div>
+
+      <VesselParticularsSection values={values} errors={errors} onChange={onChange} />
     </div>
   )
 }

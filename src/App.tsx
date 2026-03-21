@@ -9,6 +9,10 @@ import VesselEditorPage from './pages/vessels/VesselEditorPage'
 import EquipmentListPage from './pages/equipment/EquipmentListPage'
 import EquipmentEditorPage from './pages/equipment/EquipmentEditorPage'
 
+// Rigging pages
+import RiggingListPage from './pages/rigging/RiggingListPage'
+import RiggingEditorPage from './pages/rigging/RiggingEditorPage'
+
 // Project pages
 import ProjectListPage from './pages/projects/ProjectListPage'
 import NewProjectPage from './pages/projects/NewProjectPage'
@@ -36,6 +40,11 @@ export default function App() {
           <Route path="equipment" element={<EquipmentListPage />} />
           <Route path="equipment/new" element={<EquipmentEditorPage />} />
           <Route path="equipment/:id" element={<EquipmentEditorPage />} />
+
+          {/* Rigging Library */}
+          <Route path="rigging" element={<RiggingListPage />} />
+          <Route path="rigging/new" element={<RiggingEditorPage />} />
+          <Route path="rigging/:id" element={<RiggingEditorPage />} />
 
           {/* Projects */}
           <Route path="projects" element={<ProjectListPage />} />

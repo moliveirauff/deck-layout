@@ -29,6 +29,21 @@ export type VesselFormState = {
   crane_jib_length_m: string
   crane_slew_min_deg: string
   crane_slew_max_deg: string
+  // v2 crane fields
+  crane_min_radius_m: string
+  crane_max_hook_height_m: string
+  // v2 vessel particulars
+  lbp_m: string
+  draft_operating_m: string
+  beam_m: string
+  displacement_t: string
+  dp_class: string
+  // v2 stability
+  kg_lightship_m: string
+  gm_min_m: string
+  roll_natural_period_s: string
+  pitch_natural_period_s: string
+  deck_elevation_m: string
 }
 
 export type BarrierRow = {
@@ -67,6 +82,9 @@ const DEFAULT_VESSEL: VesselFormState = {
   crane_pedestal_x: '0', crane_pedestal_y: '0', crane_pedestal_height_m: '',
   crane_boom_length_m: '', crane_jib_length_m: '',
   crane_slew_min_deg: '0', crane_slew_max_deg: '360',
+  crane_min_radius_m: '', crane_max_hook_height_m: '',
+  lbp_m: '', draft_operating_m: '', beam_m: '', displacement_t: '', dp_class: 'none',
+  kg_lightship_m: '', gm_min_m: '', roll_natural_period_s: '', pitch_natural_period_s: '', deck_elevation_m: '',
 }
 
 function vesselToForm(v: Vessel): VesselFormState {
@@ -80,6 +98,18 @@ function vesselToForm(v: Vessel): VesselFormState {
     crane_jib_length_m: v.crane_jib_length_m != null ? String(v.crane_jib_length_m) : '',
     crane_slew_min_deg: String(v.crane_slew_min_deg ?? 0),
     crane_slew_max_deg: String(v.crane_slew_max_deg ?? 360),
+    crane_min_radius_m: v.crane_min_radius_m != null ? String(v.crane_min_radius_m) : '',
+    crane_max_hook_height_m: v.crane_max_hook_height_m != null ? String(v.crane_max_hook_height_m) : '',
+    lbp_m: v.lbp_m != null ? String(v.lbp_m) : '',
+    draft_operating_m: v.draft_operating_m != null ? String(v.draft_operating_m) : '',
+    beam_m: v.beam_m != null ? String(v.beam_m) : '',
+    displacement_t: v.displacement_t != null ? String(v.displacement_t) : '',
+    dp_class: v.dp_class ?? 'none',
+    kg_lightship_m: v.kg_lightship_m != null ? String(v.kg_lightship_m) : '',
+    gm_min_m: v.gm_min_m != null ? String(v.gm_min_m) : '',
+    roll_natural_period_s: v.roll_natural_period_s != null ? String(v.roll_natural_period_s) : '',
+    pitch_natural_period_s: v.pitch_natural_period_s != null ? String(v.pitch_natural_period_s) : '',
+    deck_elevation_m: v.deck_elevation_m != null ? String(v.deck_elevation_m) : '',
   }
 }
 
@@ -193,6 +223,21 @@ export function useVesselEditor() {
       crane_jib_length_m: values.crane_jib_length_m ? parseFloat(values.crane_jib_length_m) : null,
       crane_slew_min_deg: parseFloat(values.crane_slew_min_deg),
       crane_slew_max_deg: parseFloat(values.crane_slew_max_deg),
+      // v2 crane fields
+      crane_min_radius_m: values.crane_min_radius_m ? parseFloat(values.crane_min_radius_m) : null,
+      crane_max_hook_height_m: values.crane_max_hook_height_m ? parseFloat(values.crane_max_hook_height_m) : null,
+      // v2 vessel particulars
+      lbp_m: values.lbp_m ? parseFloat(values.lbp_m) : null,
+      draft_operating_m: values.draft_operating_m ? parseFloat(values.draft_operating_m) : null,
+      beam_m: values.beam_m ? parseFloat(values.beam_m) : null,
+      displacement_t: values.displacement_t ? parseFloat(values.displacement_t) : null,
+      dp_class: values.dp_class || null,
+      // v2 stability
+      kg_lightship_m: values.kg_lightship_m ? parseFloat(values.kg_lightship_m) : null,
+      gm_min_m: values.gm_min_m ? parseFloat(values.gm_min_m) : null,
+      roll_natural_period_s: values.roll_natural_period_s ? parseFloat(values.roll_natural_period_s) : null,
+      pitch_natural_period_s: values.pitch_natural_period_s ? parseFloat(values.pitch_natural_period_s) : null,
+      deck_elevation_m: values.deck_elevation_m ? parseFloat(values.deck_elevation_m) : null,
     }
 
     const result = vesselSchema.safeParse(raw)
@@ -217,7 +262,23 @@ export function useVesselEditor() {
       return
     }
 
-    const validated = { ...result.data, description: result.data.description ?? null, crane_jib_length_m: result.data.crane_jib_length_m ?? null }
+    const validated = {
+      ...result.data,
+      description: result.data.description ?? null,
+      crane_jib_length_m: result.data.crane_jib_length_m ?? null,
+      crane_min_radius_m: raw.crane_min_radius_m,
+      crane_max_hook_height_m: raw.crane_max_hook_height_m,
+      lbp_m: raw.lbp_m,
+      draft_operating_m: raw.draft_operating_m,
+      beam_m: raw.beam_m,
+      displacement_t: raw.displacement_t,
+      dp_class: (raw.dp_class && raw.dp_class !== 'none') ? raw.dp_class as import('../types/database').DpClass : null,
+      kg_lightship_m: raw.kg_lightship_m,
+      gm_min_m: raw.gm_min_m,
+      roll_natural_period_s: raw.roll_natural_period_s,
+      pitch_natural_period_s: raw.pitch_natural_period_s,
+      deck_elevation_m: raw.deck_elevation_m,
+    }
     const { data: saved, error: vesselErr } = await saveVessel(isNew ? validated : { ...validated, id })
     if (vesselErr || !saved) { setNotification({ msg: `Save failed: ${vesselErr ?? 'unknown'}`, ok: false }); setSaving(false); return }
 

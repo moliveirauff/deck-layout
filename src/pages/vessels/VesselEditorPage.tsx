@@ -9,6 +9,7 @@ import { BarriersTab } from '../../components/vessels/BarriersTab'
 import { DeckLoadZonesTab } from '../../components/vessels/DeckLoadZonesTab'
 import { CraneCurveTab } from '../../components/vessels/CraneCurveTab'
 import { VesselRaoTab } from '../../components/vessels/VesselRaoTab'
+import { StabilityTab } from '../../components/vessels/StabilityTab'
 import { DeckPreviewCanvas } from '../../components/vessels/DeckPreviewCanvas'
 import { useVesselEditor } from '../../hooks/useVesselEditor'
 

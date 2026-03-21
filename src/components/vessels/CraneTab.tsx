@@ -1,17 +1,21 @@
 import { Input } from '../ui/input'
 import { Select } from '../ui/select'
 import { FormField } from './FormField'
+import type { VesselFormState } from '../../hooks/useVesselEditor'
 
-type CraneValues = {
-  crane_type: string
-  crane_pedestal_x: string
-  crane_pedestal_y: string
-  crane_pedestal_height_m: string
-  crane_boom_length_m: string
-  crane_jib_length_m: string
-  crane_slew_min_deg: string
-  crane_slew_max_deg: string
-}
+type CraneValues = Pick<
+  VesselFormState,
+  | 'crane_type'
+  | 'crane_pedestal_x'
+  | 'crane_pedestal_y'
+  | 'crane_pedestal_height_m'
+  | 'crane_boom_length_m'
+  | 'crane_jib_length_m'
+  | 'crane_slew_min_deg'
+  | 'crane_slew_max_deg'
+  | 'crane_min_radius_m'
+  | 'crane_max_hook_height_m'
+>
 
 type CraneTabProps = {
   values: CraneValues
@@ -128,6 +132,38 @@ export function CraneTab({ values, errors, onChange }: CraneTabProps) {
             min={-360}
             max={360}
             step={1}
+          />
+        </FormField>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          label="Min Radius (m)"
+          error={errors.crane_min_radius_m}
+          hint="Minimum crane operating radius."
+        >
+          <Input
+            type="number"
+            value={values.crane_min_radius_m}
+            onChange={(e) => onChange('crane_min_radius_m', e.target.value)}
+            placeholder="e.g. 5.0"
+            min={0}
+            step={0.1}
+          />
+        </FormField>
+
+        <FormField
+          label="Max Hook Height (m)"
+          error={errors.crane_max_hook_height_m}
+          hint="Maximum hook height above deck."
+        >
+          <Input
+            type="number"
+            value={values.crane_max_hook_height_m}
+            onChange={(e) => onChange('crane_max_hook_height_m', e.target.value)}
+            placeholder="e.g. 40.0"
+            min={0}
+            step={0.1}
           />
         </FormField>
       </div>
