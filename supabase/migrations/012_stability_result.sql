@@ -1,5 +1,5 @@
 -- DeckLayout v2 — Stability result per project
-CREATE TABLE deck_layout.stability_result (
+CREATE TABLE IF NOT EXISTS deck_layout.stability_result (
   id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id            uuid NOT NULL REFERENCES deck_layout.project(id) ON DELETE CASCADE,
   total_deck_load_t     numeric NOT NULL,
@@ -19,5 +19,5 @@ CREATE TABLE deck_layout.stability_result (
 );
 
 ALTER TABLE deck_layout.stability_result ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all access" ON deck_layout.stability_result FOR ALL USING (true) WITH CHECK (true);
-CREATE INDEX idx_stability_project ON deck_layout.stability_result(project_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all access' AND tablename = 'stability_result' AND schemaname = 'deck_layout') THEN CREATE POLICY "Allow all access" ON deck_layout.stability_result FOR ALL USING (true) WITH CHECK (true); END IF; END $$;
+CREATE INDEX IF NOT EXISTS idx_stability_project ON deck_layout.stability_result(project_id);

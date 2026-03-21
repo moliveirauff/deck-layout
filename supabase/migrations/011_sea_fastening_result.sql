@@ -1,5 +1,5 @@
 -- DeckLayout v2 — Sea-fastening result per equipment
-CREATE TABLE deck_layout.sea_fastening_result (
+CREATE TABLE IF NOT EXISTS deck_layout.sea_fastening_result (
   id                             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   project_equipment_id           uuid NOT NULL REFERENCES deck_layout.project_equipment(id) ON DELETE CASCADE,
   acc_transversal_ms2            numeric NOT NULL,
@@ -24,5 +24,5 @@ CREATE TABLE deck_layout.sea_fastening_result (
 );
 
 ALTER TABLE deck_layout.sea_fastening_result ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all access" ON deck_layout.sea_fastening_result FOR ALL USING (true) WITH CHECK (true);
-CREATE INDEX idx_sf_result_pe ON deck_layout.sea_fastening_result(project_equipment_id);
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all access' AND tablename = 'sea_fastening_result' AND schemaname = 'deck_layout') THEN CREATE POLICY "Allow all access" ON deck_layout.sea_fastening_result FOR ALL USING (true) WITH CHECK (true); END IF; END $$;
+CREATE INDEX IF NOT EXISTS idx_sf_result_pe ON deck_layout.sea_fastening_result(project_equipment_id);

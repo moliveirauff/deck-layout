@@ -214,7 +214,7 @@ export async function seedDemoData(): Promise<SeedResult> {
         crane_pedestal_height_m: 15, crane_boom_length_m: 40, crane_jib_length_m: null,
         crane_slew_min_deg: 0, crane_slew_max_deg: 360,
         // TRD-16: Vessel stability & geometry
-        lbp_m: 145.0, draft_m: 8.5, beam_m: 32.0, displacement_t: 18500, dp_class: 2,
+        lbp_m: 145.0, draft_operating_m: 8.5, beam_m: 32.0, displacement_t: 18500, dp_class: 2,
         kg_lightship_m: 12.0, gm_min_m: 1.0, deck_elevation_m: 15.0,
       },
     )
@@ -231,7 +231,7 @@ export async function seedDemoData(): Promise<SeedResult> {
         crane_pedestal_height_m: 18, crane_boom_length_m: 35, crane_jib_length_m: 20,
         crane_slew_min_deg: 0, crane_slew_max_deg: 360,
         // TRD-16: Vessel stability & geometry
-        lbp_m: 156.0, draft_m: 9.2, beam_m: 34.0, displacement_t: 21500, dp_class: 3,
+        lbp_m: 156.0, draft_operating_m: 9.2, beam_m: 34.0, displacement_t: 21500, dp_class: 3,
         kg_lightship_m: 12.0, gm_min_m: 1.0, deck_elevation_m: 15.0,
       },
     )
