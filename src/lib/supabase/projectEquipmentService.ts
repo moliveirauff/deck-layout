@@ -150,3 +150,22 @@ export async function removeEquipmentFromProject(id: string): ServiceResult<null
     return { data: null, error: 'Network error' }
   }
 }
+
+/** Update the computed hook_load_t on a project equipment record. */
+export async function updateProjectEquipmentHookLoad(
+  id: string,
+  hook_load_t: number,
+): ServiceResult<ProjectEquipment> {
+  try {
+    const { data, error } = await supabase
+      .from('project_equipment')
+      .update({ hook_load_t })
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) return { data: null, error: error.message }
+    return { data: data as ProjectEquipment, error: null }
+  } catch {
+    return { data: null, error: 'Network error' }
+  }
+}

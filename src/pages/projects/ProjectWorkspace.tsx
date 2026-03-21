@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useParams } from 'react-router-dom'
-import { LayoutDashboard, Map, Calculator, Box, FileText } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Map,
+  Calculator,
+  Box,
+  FileText,
+  Link2,
+  Anchor,
+  Scale,
+  ArrowDown,
+  Waves,
+  CloudSun,
+} from 'lucide-react'
 import { useProjectStore } from '../../stores/useProjectStore'
 import { Skeleton } from '../../components/ui/skeleton'
 import { loadEquipmentCountsByProject } from '../../lib/supabase/projectEquipmentService'
@@ -15,9 +27,15 @@ type SidebarLink = {
 
 const SIDEBAR_LINKS: SidebarLink[] = [
   { to: '.', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: 'deck', label: 'Deck', icon: Map },
+  { to: 'deck', label: 'Deck Layout', icon: Map },
+  { to: 'rigging', label: 'Rigging', icon: Link2 },
+  { to: 'seafastening', label: 'Sea-Fastening', icon: Anchor },
+  { to: 'stability', label: 'Stability', icon: Scale },
+  { to: 'rao', label: 'RAO', icon: Waves },
   { to: 'analysis', label: 'Analysis', icon: Calculator },
-  { to: '3d', label: '3D', icon: Box },
+  { to: 'lowering', label: 'Lowering', icon: ArrowDown },
+  { to: 'weather', label: 'Weather Window', icon: CloudSun },
+  { to: '3d', label: '3D View', icon: Box },
   { to: 'report', label: 'Report', icon: FileText },
 ]
 
