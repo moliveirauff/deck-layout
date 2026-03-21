@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import { Input } from '../../components/ui/input'
 import { calculateKG, verifyGM, calculateTrimAndList } from '../../lib/calculations/stability'
+import type { EquipmentLibrary } from '../../types/database'
 
 export default function StabilityPage() {
   const { id: projectId } = useParams<{ id: string }>()
@@ -35,8 +36,8 @@ export default function StabilityPage() {
   const kmToUse = kmOverride ? parseFloat(kmOverride) : defaultKm
 
   const libById = useMemo(() => {
-    const map: Record<string, any> = {}
-    eqLibrary.forEach(eq => map[eq.id] = eq)
+    const map: Record<string, EquipmentLibrary> = {}
+    eqLibrary.forEach(eq => { map[eq.id] = eq })
     return map
   }, [eqLibrary])
 

@@ -53,10 +53,13 @@ export function calculateTrimAndList(input: TrimAndListInput): TrimAndListResult
       ? Math.atan(trim_moment_tm / (displacement_loaded_t * lbp_m)) * RAD_TO_DEG
       : 0
 
+  // Guard: if GM ≤ 0 the vessel is unstable — cap list at 90° (worst case) to avoid NaN/Infinity
   const list_angle_deg =
     displacement_loaded_t > 0 && gm_loaded_m > 0
       ? Math.atan(list_moment_tm / (displacement_loaded_t * gm_loaded_m)) * RAD_TO_DEG
-      : 0
+      : gm_loaded_m <= 0
+        ? 90 // Unstable vessel
+        : 0
 
   return {
     trim_moment_tm,

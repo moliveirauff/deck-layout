@@ -376,13 +376,17 @@ function calcCell(p: CellInput) {
   const f_total_N = W_N * daf + Fd + Fa + Fs
   const utilization_pct = (f_total_N / crane_cap_N) * 100
 
-  return { daf, utilization_pct, is_feasible: utilization_pct <= 100 }
+  // DNV-ST-N001: 90% crane utilization limit (same as frontend seaStateFeasibility.ts)
+  return { daf, utilization_pct, is_feasible: utilization_pct <= 90 }
 }
 
 // ─── Sea-state grid constants ──────────────────────────────────────────────────
 
-const HS_STEPS = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
-const TP_STEPS = [4, 6, 8, 10, 12, 14, 16]
+// Aligned with frontend generateSeaStateGrid.ts: 15×15 grid, Hs 0.25m step, Tp 1s step
+const HS_STEPS = Array.from({ length: 15 }, (_, i) => Math.round((0.5 + i * 0.25) * 100) / 100)
+// [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0]
+const TP_STEPS = Array.from({ length: 15 }, (_, i) => 4 + i)
+// [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 
 // ─── Database helpers ──────────────────────────────────────────────────────────
 

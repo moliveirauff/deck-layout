@@ -16,7 +16,7 @@ export function ArrangementTable({ rows, onRemove }: Props) {
   if (rows.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-slate-400">
-        No items added yet. Click "+ Add Item from Library" to start.
+        No items added yet. Click &quot;+ Add Item from Library&quot; to start.
       </p>
     )
   }

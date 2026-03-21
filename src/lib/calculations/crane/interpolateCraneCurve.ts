@@ -20,7 +20,9 @@ export function interpolateCraneCurve(
   if (minRadiusM !== undefined && radiusM < minRadiusM) return 0
   if (curve.length === 0) return 0
   if (radiusM <= curve[0].radius_m) return curve[0].capacity_t
-  if (radiusM >= curve[curve.length - 1].radius_m) return 0
+  // At or beyond maximum radius — return 0 only if strictly beyond; return last point if equal
+  if (radiusM > curve[curve.length - 1].radius_m) return 0
+  if (radiusM === curve[curve.length - 1].radius_m) return curve[curve.length - 1].capacity_t
 
   for (let i = 0; i < curve.length - 1; i++) {
     const lo = curve[i]

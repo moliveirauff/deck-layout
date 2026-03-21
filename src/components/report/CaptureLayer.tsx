@@ -46,8 +46,7 @@ function StaticDeckStage({
   const wy = (y: number) => oy + (vessel.deck_width_m - y) * bs
 
   return (
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    <Stage ref={(s: any) => { stageRef.current = s as KonvaStageRef }} width={W} height={H}>
+    <Stage ref={(s: unknown) => { stageRef.current = s as KonvaStageRef }} width={W} height={H}>
       <Layer>
         <Rect x={0} y={0} width={W} height={H} fill="#dbeafe" />
         <Rect

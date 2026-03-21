@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/badge'
 import { calculateTransitAccelerations } from '../../lib/calculations/seafastening/transitAccelerations'
 import { calculateSeaFasteningForces, calculateGrillagePressure, checkGrillageCapacity } from '../../lib/calculations/seafastening'
 import { validatePlacement } from '../../lib/calculations/deckValidation'
+import type { EquipmentLibrary, ProjectEquipment, RaoEntry, Vessel, VesselBarrier, DeckLoadZone, SeaFasteningResult, SeaFasteningResultInsert, Project } from '../../types/database'
 
 export default function SeaFasteningPage() {
   const { id: projectId } = useParams<{ id: string }>()
@@ -56,8 +57,8 @@ export default function SeaFasteningPage() {
   }, [deckItems])
 
   const libById = useMemo(() => {
-    const map: Record<string, any> = {}
-    eqLibrary.forEach(eq => map[eq.id] = eq)
+    const map: Record<string, EquipmentLibrary> = {}
+    eqLibrary.forEach(eq => { map[eq.id] = eq })
     return map
   }, [eqLibrary])
 
@@ -123,7 +124,18 @@ export default function SeaFasteningPage() {
   )
 }
 
-function EquipmentSeaFasteningCard({ item, equipment, vessel, zones, barriers, allPlaced, raoEntries, activeProject, savedResult, onSave }: any) {
+function EquipmentSeaFasteningCard({ item, equipment, vessel, zones, barriers, allPlaced, raoEntries, activeProject, savedResult, onSave }: {
+  item: ProjectEquipment
+  equipment: EquipmentLibrary
+  vessel: Vessel
+  zones: DeckLoadZone[]
+  barriers: VesselBarrier[]
+  allPlaced: ProjectEquipment[]
+  raoEntries: RaoEntry[]
+  activeProject: Project
+  savedResult: SeaFasteningResult | null
+  onSave: (result: SeaFasteningResultInsert) => void
+}) {
   const [nTiedowns, setNTiedowns] = useState(savedResult?.n_tiedowns?.toString() || '4')
   const [tiedownMbl, setTiedownMbl] = useState(savedResult?.tiedown_mbl_kn?.toString() || '')
   const [tiedownType, setTiedownType] = useState(savedResult?.tiedown_type || '')
@@ -163,7 +175,7 @@ function EquipmentSeaFasteningCard({ item, equipment, vessel, zones, barriers, a
 
   const zoneCapacity = useMemo(() => {
     const p = { id: item.id, cx: item.deck_pos_x, cy: item.deck_pos_y, halfL: equipment.length_m / 2, halfW: equipment.width_m / 2, rotDeg: item.deck_rotation_deg, weightT: equipment.dry_weight_t }
-    const others = allPlaced.filter((o: any) => o.id !== item.id).map((o: any) => ({
+    const others = allPlaced.filter((o: ProjectEquipment) => o.id !== item.id).map((o: ProjectEquipment) => ({
       id: o.id, cx: o.deck_pos_x, cy: o.deck_pos_y, halfL: 0, halfW: 0, rotDeg: 0, weightT: 0
     }))
     const res = validatePlacement(p, vessel.deck_length_m, vessel.deck_width_m, barriers, zones, others)
@@ -192,6 +204,7 @@ function EquipmentSeaFasteningCard({ item, equipment, vessel, zones, barriers, a
       grillage_pressure_t_m2: pressure,
       deck_load_grillage_ok: grillageOk,
       daf_transit: forces.daf_transit,
+      calculated_at: new Date().toISOString(),
     })
   }
 

@@ -575,9 +575,8 @@ function stability(doc: jsPDF, pageNum: number, data: ReportData): void {
     ['Loaded GM', `${res.gm_loaded_m.toFixed(2)} m`],
     ['GM Status', res.gm_ok ? 'OK' : 'FAIL'],
   ], M, y)
-  y += 5
 
-  y = sub(doc, 'Trim & List', y)
+  y = sub(doc, 'Trim & List', y + 5)
   y = tbl(doc, [
     { header: 'Parameter', width: 85 },
     { header: 'Value', width: 95 },
@@ -671,9 +670,8 @@ function dnvCalculationTrail(doc: jsPDF, pageNum: number, pe: ProjectEquipment, 
     ['Crane Tip Velocity (v_ct)', 'v_z · ω', `${loads.v_ct.toFixed(2)} m/s`],
     ['Crane Tip Acceleration (a_ct)', 'v_z · ω²', `${loads.a_ct.toFixed(2)} m/s²`],
   ], M, y)
-  y += 3
 
-  y = sub(doc, '3. Hydrodynamic Forces', y)
+  y = sub(doc, '3. Hydrodynamic Forces', y + 3)
   const v_rel = loads.v_ct + kinematics.v_water
   const a_rel = loads.a_ct + kinematics.a_water
   y = tbl(doc, [{ header: 'Parameter', width: 90 }, { header: 'Formula', width: 45 }, { header: 'Value', width: 45 }], [

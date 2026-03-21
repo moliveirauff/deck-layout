@@ -86,7 +86,7 @@ export default function RiggingEditorPage() {
   useEffect(() => {
     if (isNew || !id) return
     setLoading(true)
-    loadRiggingItem(id).then(({ data, error }) => {
+    void loadRiggingItem(id).then(({ data, error }) => {
       if (error || !data) {
         setSaveError(error ?? 'Failed to load item')
         setLoading(false)
