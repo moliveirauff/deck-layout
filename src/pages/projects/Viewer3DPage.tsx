@@ -141,7 +141,7 @@ export default function Viewer3DPage() {
             <p className="text-xs font-medium text-gray-700">Screenshot captured</p>
             <a
               href={screenshot}
-              download="sublift-3d.png"
+              download="deck-layout-3d.png"
               className="text-xs text-blue-600 hover:underline"
             >
               Download PNG

@@ -1,4 +1,4 @@
-// SubLift v0.1
+// DeckLayout v1.0
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'

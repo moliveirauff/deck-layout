@@ -12,7 +12,7 @@ export function TopBar() {
     <header className="flex h-12 flex-shrink-0 items-center bg-slate-900 px-6">
       {/* Logo */}
       <span className="mr-8 text-lg font-bold tracking-tight text-white">
-        SubLift
+        DeckLayout
       </span>
 
       {/* Primary navigation */}

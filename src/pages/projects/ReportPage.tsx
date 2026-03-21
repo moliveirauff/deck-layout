@@ -159,7 +159,7 @@ export default function ReportPage() {
     if (!pdfDoc || !activeProject) return
     const date = new Date().toISOString().split('T')[0]
     const name = activeProject.name.replace(/[^a-z0-9]/gi, '_')
-    pdfDoc.save(`SubLift_Report_${name}_${date}.pdf`)
+    pdfDoc.save(`DeckLayout_Report_${name}_${date}.pdf`)
   }
 
   const pct = Math.round((stepIdx / (STEPS.length - 1)) * 100)

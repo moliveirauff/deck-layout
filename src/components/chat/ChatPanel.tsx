@@ -106,7 +106,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500">
               <MessageCircle className="h-3.5 w-3.5 text-white" />
             </div>
-            <span className="text-sm font-semibold text-white">SubLift Assistant</span>
+            <span className="text-sm font-semibold text-white">DeckLayout Assistant</span>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -186,7 +186,7 @@ export function ChatPanel({ projectId }: ChatPanelProps) {
         onClick={togglePanel}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:scale-105 active:scale-95"
         aria-label="Toggle AI chat"
-        title="SubLift Assistant (Ctrl+K)"
+        title="DeckLayout Assistant (Ctrl+K)"
       >
         {isOpen ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
       </button>
