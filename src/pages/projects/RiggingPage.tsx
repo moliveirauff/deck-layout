@@ -60,12 +60,18 @@ export default function RiggingPage() {
       setRows([])
       return
     }
-    void riggingStore.loadArrangement(selectedPeId).then(() => {
+    // Wait for both items and arrangement to be loaded before building rows
+    void Promise.all([
+      riggingStore.loadItems(),
+      riggingStore.loadArrangement(selectedPeId),
+    ]).then(() => {
+      // Re-read from store after both promises resolve
       const saved = riggingStore.arrangements[selectedPeId] ?? []
+      const items = riggingStore.items
       const loaded: ArrangementRow[] = saved.flatMap((entry) => {
-        const libItem = riggingStore.items.find((i) => i.id === entry.rigging_item_id)
+        const libItem = items.find((i) => i.id === entry.rigging_item_id)
         if (!libItem) return []
-        return [buildRow(libItem, entry.quantity, entry.angle_from_vertical_deg, hookLoad)]
+        return [buildRow(libItem, entry.quantity, entry.angle_from_vertical_deg, 0)]
       })
       setRows(loaded)
     })
