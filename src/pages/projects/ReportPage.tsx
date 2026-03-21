@@ -6,6 +6,10 @@ import { useEquipmentStore } from '../../stores/useEquipmentStore'
 import { useRaoStore } from '../../stores/useRaoStore'
 import { useAnalysisStore } from '../../stores/useAnalysisStore'
 import { useWeatherStore } from '../../stores/useWeatherStore'
+import { useRiggingStore } from '../../stores/useRiggingStore'
+import { useSeaFasteningStore } from '../../stores/useSeaFasteningStore'
+import { useStabilityStore } from '../../stores/useStabilityStore'
+import { useLoweringStore } from '../../stores/useLoweringStore'
 import { Button } from '../../components/ui/button'
 import { CaptureLayer, type CaptureLayerApi } from '../../components/report/CaptureLayer'
 import { buildPdf, type ReportData, type ReportSections } from '../../lib/report/buildPdf'
@@ -20,8 +24,13 @@ const ALL_SECTIONS: { key: SectionKey; label: string }[] = [
   { key: 'deckLayout', label: 'Deck Layout (2D capture)' },
   { key: 'craneCapacity', label: 'Crane Capacity Verification' },
   { key: 'dnvAnalysis', label: 'DNV Analysis Results' },
+  { key: 'dnvTrail', label: 'DNV Calculation Trail (Intermediate Values)' },
   { key: 'seaStateTables', label: 'Sea State Operability Tables' },
   { key: 'weatherWindow', label: 'Weather Window Results' },
+  { key: 'riggingSummary', label: 'Rigging Summary (WLL checks)' },
+  { key: 'seaFastening', label: 'Sea-Fastening Summary' },
+  { key: 'stability', label: 'Stability Summary' },
+  { key: 'lowering', label: 'Lowering Summary' },
   { key: 'view3d', label: '3D View' },
 ]
 
@@ -41,6 +50,8 @@ function defaultSections(): ReportSections {
     vesselSummary: true, equipmentList: true, deckLayout: true,
     craneCapacity: true, dnvAnalysis: true, seaStateTables: true,
     weatherWindow: true, view3d: true,
+    riggingSummary: true, seaFastening: true, stability: true,
+    lowering: true, dnvTrail: true,
   }
 }
 
@@ -52,6 +63,10 @@ export default function ReportPage() {
   const raoStore = useRaoStore()
   const analysisStore = useAnalysisStore()
   const weatherStore = useWeatherStore()
+  const riggingStore = useRiggingStore()
+  const seaFasteningStore = useSeaFasteningStore()
+  const stabilityStore = useStabilityStore()
+  const loweringStore = useLoweringStore()
 
   const [sections, setSections] = useState<ReportSections>(defaultSections)
   const [generating, setGenerating] = useState(false)
@@ -68,11 +83,17 @@ export default function ReportPage() {
     void equipStore.loadEquipment()
     void raoStore.loadRaos(projectId)
     void weatherStore.loadScatterDiagram(projectId)
+    void riggingStore.loadItems()
+    void seaFasteningStore.loadAll(projectId)
+    void stabilityStore.loadResult(projectId)
+    void loweringStore.loadAll(projectId)
+    void loweringStore.loadCurrentProfile(projectId)
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     for (const pe of deckStore.items) {
       if (!analysisStore.results[pe.id]) void analysisStore.loadResults(pe.id)
+      if (!riggingStore.arrangements[pe.id]) void riggingStore.loadArrangement(pe.id)
     }
   }, [deckStore.items]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -94,9 +115,13 @@ export default function ReportPage() {
 
   function isAvailable(key: SectionKey): boolean {
     if (key === 'equipmentList' || key === 'deckLayout' || key === 'craneCapacity') return hasEquipment
-    if (key === 'dnvAnalysis') return hasAnalysis
+    if (key === 'dnvAnalysis' || key === 'dnvTrail') return hasAnalysis
     if (key === 'seaStateTables') return hasLimits
     if (key === 'weatherWindow') return hasScatter
+    if (key === 'riggingSummary') return hasEquipment && Object.keys(riggingStore.arrangements).length > 0
+    if (key === 'seaFastening') return Object.keys(seaFasteningStore.results).length > 0
+    if (key === 'stability') return !!stabilityStore.result
+    if (key === 'lowering') return Object.keys(loweringStore.results).length > 0
     return true
   }
 
@@ -126,6 +151,14 @@ export default function ReportPage() {
         craneTipResults[pe.id] = calculateCraneTipMotion(raoStore.entries, tip)
       }
 
+      const riggingArrangements: ReportData['riggingArrangements'] = {}
+      for (const peId in riggingStore.arrangements) {
+        riggingArrangements[peId] = riggingStore.arrangements[peId].map(a => ({
+          ...a,
+          riggingItem: riggingStore.items.find(i => i.id === a.rigging_item_id)!
+        }))
+      }
+
       const data: ReportData = {
         project: activeProject,
         vessel, barriers, deckLoadZones, craneCurve,
@@ -134,6 +167,11 @@ export default function ReportPage() {
         seaStateLimits: analysisStore.seaStateLimits,
         scatterEntries: weatherStore.scatterEntries,
         craneTipResults,
+        riggingArrangements,
+        seaFasteningResults: seaFasteningStore.results,
+        stabilityResult: stabilityStore.result,
+        loweringResults: loweringStore.results,
+        currentProfile: loweringStore.currentProfile,
       }
 
       setStepIdx(2)
@@ -253,6 +291,11 @@ export default function ReportPage() {
             seaStateLimits: analysisStore.seaStateLimits,
             scatterEntries: weatherStore.scatterEntries,
             craneTipResults: {},
+            riggingArrangements: {},
+            seaFasteningResults: seaFasteningStore.results,
+            stabilityResult: stabilityStore.result,
+            loweringResults: loweringStore.results,
+            currentProfile: loweringStore.currentProfile,
           }}
           sections={sections}
         />

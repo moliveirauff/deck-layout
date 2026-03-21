@@ -213,6 +213,9 @@ export async function seedDemoData(): Promise<SeedResult> {
         crane_type: 'OMC', crane_pedestal_x: 68, crane_pedestal_y: 12.5,
         crane_pedestal_height_m: 15, crane_boom_length_m: 40, crane_jib_length_m: null,
         crane_slew_min_deg: 0, crane_slew_max_deg: 360,
+        // TRD-16: Vessel stability & geometry
+        lbp_m: 145.0, draft_m: 8.5, beam_m: 32.0, displacement_t: 18500, dp_class: 2,
+        kg_lightship_m: 12.0, gm_min_m: 1.0, deck_elevation_m: 15.0,
       },
     )
     if (e1 || !sevenSeas) return { ok: false, error: e1 ?? 'Failed to create Seven Seas' }
@@ -227,6 +230,9 @@ export async function seedDemoData(): Promise<SeedResult> {
         crane_type: 'knuckle_boom', crane_pedestal_x: 75, crane_pedestal_y: 14,
         crane_pedestal_height_m: 18, crane_boom_length_m: 35, crane_jib_length_m: 20,
         crane_slew_min_deg: 0, crane_slew_max_deg: 360,
+        // TRD-16: Vessel stability & geometry
+        lbp_m: 156.0, draft_m: 9.2, beam_m: 34.0, displacement_t: 21500, dp_class: 3,
+        kg_lightship_m: 12.0, gm_min_m: 1.0, deck_elevation_m: 15.0,
       },
     )
     if (e2 || !skandi) return { ok: false, error: e2 ?? 'Failed to create Skandi Búzios' }
@@ -262,6 +268,22 @@ export async function seedDemoData(): Promise<SeedResult> {
       if (error || !eq) return { ok: false, error: error ?? 'Failed to create equipment' }
       eqIds[item.name] = eq.id
       console.log('[seed]   Equipment created:', eq.name, eq.id)
+    }
+
+    // ── Step 3.1: Rigging Library ────────────────────────────────────────────
+    console.log('[seed] Step 3.1: inserting rigging library…')
+
+    const RIGGING_ITEMS = [
+      { name: 'Sling 8m 50t',     rigging_type: 'sling',        weight_kg: 85,   wll_t: 50,  length_m: 8.0  },
+      { name: 'Sling 12m 100t',   rigging_type: 'sling',        weight_kg: 210,  wll_t: 100, length_m: 12.0 },
+      { name: 'Shackle 55t',      rigging_type: 'shackle',      weight_kg: 40,   wll_t: 55,  length_m: 0.5  },
+      { name: 'Spreader Bar 6m',  rigging_type: 'spreader_bar', weight_kg: 1200, wll_t: 120, length_m: 6.0  },
+    ]
+
+    for (const item of RIGGING_ITEMS) {
+      const { error } = await insertOne('rigging_item', item)
+      if (error) return { ok: false, error }
+      console.log('[seed]   Rigging created:', item.name)
     }
 
     // ── Step 4: Build vessel snapshot for project ────────────────────────────
@@ -397,6 +419,24 @@ export async function seedDemoData(): Promise<SeedResult> {
     const scatterErr = await insertMany('scatter_diagram_entry', scatterRows)
     if (scatterErr) return { ok: false, error: scatterErr }
     console.log('[seed] Scatter entries inserted.')
+
+    // ── Step 9: Current Profile (TRD-16) ─────────────────────────────────────
+    console.log('[seed] Step 9: inserting current profile (decay model)…')
+
+    const currentRows = [
+      { depth_m: 0,    current_speed_ms: 1.5,  current_direction_deg: 180 },
+      { depth_m: 50,   current_speed_ms: 1.2,  current_direction_deg: 175 },
+      { depth_m: 100,  current_speed_ms: 0.8,  current_direction_deg: 170 },
+      { depth_m: 200,  current_speed_ms: 0.5,  current_direction_deg: 160 },
+      { depth_m: 500,  current_speed_ms: 0.3,  current_direction_deg: 150 },
+      { depth_m: 1000, current_speed_ms: 0.15, current_direction_deg: 140 },
+      { depth_m: 1500, current_speed_ms: 0.1,  current_direction_deg: 135 },
+      { depth_m: 2000, current_speed_ms: 0.05, current_direction_deg: 130 },
+    ].map(row => ({ ...row, project_id: project.id }))
+
+    const currentErr = await insertMany('current_profile_entry', currentRows)
+    if (currentErr) return { ok: false, error: currentErr }
+    console.log('[seed] Current profile entries inserted.')
 
     console.log('[seed] ✓ All demo data seeded successfully.')
     return { ok: true }

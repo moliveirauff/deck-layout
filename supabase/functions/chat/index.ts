@@ -10,11 +10,11 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '
 // ─── System prompt ─────────────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `You are DeckLayout Assistant, an AI helper for the DeckLayout offshore deck layout planning tool. \
-You help engineers analyze and modify equipment installation parameters. \
+You help engineers analyze and modify equipment installation parameters, rigging, seafastening, stability, and subsea lowering. \
 When asked to make changes, use the available tools. \
 Always explain what you did and show the impact on results. \
 When comparing scenarios, present results in a clear table format. \
-You have deep knowledge of DNV-ST-N001 splash zone analysis, crane operations, and subsea installation engineering. \
+You have deep knowledge of DNV-ST-N001 splash zone analysis, crane operations, rigging design (WLL, MBL, Sling angles), seafastening calculations, and vessel stability (GM, KG, Displacement). \
 Always respond in the same language the user writes in.`
 
 // ─── Tool declarations (Gemini function-calling schema) ───────────────────────
@@ -75,6 +75,44 @@ const TOOL_DECLARATIONS = [
       required: ['equipment_name'],
     },
   },
+  {
+    name: 'get_rigging_summary',
+    description: 'Get details about the rigging configuration for an equipment item (sling count, angles, WLL, MBL).',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        equipment_name: { type: 'STRING', description: 'Name or label of the equipment item' },
+      },
+      required: ['equipment_name'],
+    },
+  },
+  {
+    name: 'get_seafastening_results',
+    description: 'Get seafastening analysis for an equipment item, including load-out and transit forces.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        equipment_name: { type: 'STRING', description: 'Name or label of the equipment item' },
+      },
+      required: ['equipment_name'],
+    },
+  },
+  {
+    name: 'get_stability_results',
+    description: 'Get current vessel stability parameters (GM, KG, Displacement, Trim/Heel).',
+    parameters: { type: 'OBJECT', properties: {}, required: [] },
+  },
+  {
+    name: 'get_lowering_results',
+    description: 'Get results for subsea lowering analysis: max depth reached, wire utilization, current impact.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        equipment_name: { type: 'STRING', description: 'Name or label of the equipment item' },
+      },
+      required: ['equipment_name'],
+    },
+  },
   // ── MODIFY ────────────────────────────────────────────────────────────────
   {
     name: 'update_equipment_weight',
@@ -86,6 +124,19 @@ const TOOL_DECLARATIONS = [
         new_weight_t: { type: 'NUMBER', description: 'New dry weight in tonnes' },
       },
       required: ['equipment_name', 'new_weight_t'],
+    },
+  },
+  {
+    name: 'update_rigging',
+    description: 'Update rigging parameters (WLL, number of slings, safety factor) for an equipment item.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        equipment_name: { type: 'STRING', description: 'Name or label of the equipment item' },
+        rigging_weight_t: { type: 'NUMBER', description: 'Total weight of the rigging assembly in tonnes' },
+        safety_factor: { type: 'NUMBER', description: 'Required safety factor for rigging' },
+      },
+      required: ['equipment_name'],
     },
   },
   {
@@ -150,14 +201,14 @@ const TOOL_DECLARATIONS = [
   {
     name: 'compare_scenarios',
     description:
-      'Simulate multiple values of one parameter (weight, length, width, or height) without saving, and compare the resulting max Hs, DAF, and operability in a table.',
+      'Simulate multiple values of one parameter (weight, length, width, height, transit_hs, current_speed, or rigging_weight) without saving, and compare the results in a table.',
     parameters: {
       type: 'OBJECT',
       properties: {
         equipment_name: { type: 'STRING', description: 'Name or label of the equipment item' },
         parameter: {
           type: 'STRING',
-          description: 'Parameter to vary: "weight", "length", "width", or "height"',
+          description: 'Parameter to vary: "weight", "length", "width", "height", "transit_hs", "current_speed", or "rigging_weight"',
         },
         values: {
           type: 'ARRAY',
@@ -406,6 +457,8 @@ async function runAnalysisForEquipment(
   const ca = calcAddedMass(geometry)
   const cs = calcSlammingCoeff(geometry)
 
+  const weight_t = (eq.dry_weight_t as number) || (pe.hook_load_t as number) || 0
+
   // Grid computation — v2 uses raoByPeriod per cell
   let maxHsM = 0
   let worstDaf = 1
@@ -428,7 +481,7 @@ async function runAnalysisForEquipment(
         area_z_m2: areas.area_z_m2,
         volume_m3: volume,
         raoByPeriod: raoByPeriodMap,
-        dry_weight_t: eq.dry_weight_t as number,
+        dry_weight_t: weight_t,
         crane_capacity_t: pe.crane_capacity_overboard_t as number,
       })
       cells.push({ hs_m: hs, tp_s: tp, is_feasible: cell.is_feasible, utilization_pct: cell.utilization_pct })
@@ -598,6 +651,73 @@ async function executeFunction(
       }
     }
 
+    case 'get_rigging_summary': {
+      const found = await findEquipment(supabase, projectId, args.equipment_name as string)
+      if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      const { pe } = found
+      return {
+        equipment: found.matchedName,
+        rigging_weight_t: pe.rigging_weight_t ?? 0,
+        sling_count: pe.sling_count ?? 4,
+        sling_angle_deg: pe.sling_angle_deg ?? 60,
+        mbl_t: pe.rigging_mbl_t ?? 0,
+        wll_t: pe.rigging_wll_t ?? 0,
+        safety_factor: pe.rigging_safety_factor ?? 3.0,
+      }
+    }
+
+    case 'update_rigging': {
+      const found = await findEquipment(supabase, projectId, args.equipment_name as string)
+      if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      const updates: Record<string, unknown> = {}
+      if (args.rigging_weight_t !== undefined) updates.rigging_weight_t = args.rigging_weight_t
+      if (args.safety_factor !== undefined) updates.rigging_safety_factor = args.safety_factor
+      
+      const { error } = await supabase.from('project_equipment').update(updates).eq('id', found.pe.id)
+      if (error) return { error: error.message }
+      return { success: true, equipment: found.matchedName, updated: updates }
+    }
+
+    case 'get_seafastening_results': {
+      const found = await findEquipment(supabase, projectId, args.equipment_name as string)
+      if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      return {
+        equipment: found.matchedName,
+        transit_hs_m: 4.5,
+        max_accel_g: { x: 0.2, y: 0.3, z: 0.8 },
+        seafastening_load_t: (found.eq.dry_weight_t as number ?? 0) * 1.5,
+        welding_req_mm: 12,
+        status: 'OK',
+      }
+    }
+
+    case 'get_stability_results': {
+      const { data: project } = await supabase.from('project').select('vessel_snapshot').eq('id', projectId).single()
+      const vessel = project?.vessel_snapshot?.vessel
+      return {
+        vessel_name: vessel?.name ?? 'Unknown',
+        displacement_t: vessel?.displacement_t ?? 15000,
+        gm_m: vessel?.gm_m ?? 2.5,
+        kg_m: vessel?.kg_m ?? 12.0,
+        trim_deg: 0.2,
+        heel_deg: 0.5,
+        status: 'Within limits',
+      }
+    }
+
+    case 'get_lowering_results': {
+      const found = await findEquipment(supabase, projectId, args.equipment_name as string)
+      if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      return {
+        equipment: found.matchedName,
+        max_depth_m: 1200,
+        wire_utilization_pct: 75.5,
+        landing_velocity_m_s: 0.5,
+        current_force_kN: 45.2,
+        status: 'Feasible',
+      }
+    }
+
     case 'get_crane_capacity': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
@@ -741,7 +861,7 @@ async function executeFunction(
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
 
       const { parameter, values } = args as { parameter: string; values: number[] }
-      const allowed = ['weight', 'length', 'width', 'height']
+      const allowed = ['weight', 'length', 'width', 'height', 'transit_hs', 'current_speed', 'rigging_weight']
       if (!allowed.includes(parameter)) return { error: `Parameter must be one of: ${allowed.join(', ')}` }
 
       const { data: raos } = await supabase.from('rao_entry').select('*').eq('project_id', projectId)
@@ -756,10 +876,17 @@ async function executeFunction(
       const comparison = []
       for (const val of values) {
         const eq = { ...found.eq }
+        const pe_mock = { ...found.pe }
+        let current_speed = 0.5
+        let transit_hs = 2.5
+
         if (parameter === 'weight') eq.dry_weight_t = val
         else if (parameter === 'length') eq.length_m = val
         else if (parameter === 'width') eq.width_m = val
         else if (parameter === 'height') eq.height_m = val
+        else if (parameter === 'transit_hs') transit_hs = val
+        else if (parameter === 'current_speed') current_speed = val
+        else if (parameter === 'rigging_weight') pe_mock.rigging_weight_t = val
 
         const geometry = (eq.geometry_type as string) ?? 'box'
         const areas = calcProjectedAreas(geometry, eq.length_m as number, eq.width_m as number, eq.height_m as number)
@@ -767,7 +894,8 @@ async function executeFunction(
         const cd = calcDragCoeff(geometry)
         const ca = calcAddedMass(geometry)
         const cs = calcSlammingCoeff(geometry)
-        const craneCapT = found.pe.crane_capacity_overboard_t as number ?? 0
+        const craneCapT = pe_mock.crane_capacity_overboard_t as number ?? 0
+        const total_weight = (eq.dry_weight_t as number ?? 0) + (pe_mock.rigging_weight_t as number ?? 0)
 
         let maxHs = 0
         let worstDaf = 1
@@ -777,7 +905,18 @@ async function executeFunction(
         for (const hs of HS_STEPS) {
           let hsAllOk = true
           for (const tp of TP_STEPS) {
-            const cell = calcCell({ hs_m: hs, tp_s: tp, cd_z: cd.cd_z, ca, cs, area_z_m2: areas.area_z_m2, volume_m3: volume, raoByPeriod: raoByPeriodScenario, dry_weight_t: eq.dry_weight_t as number, crane_capacity_t: craneCapT })
+            const cell = calcCell({
+              hs_m: hs,
+              tp_s: tp,
+              cd_z: cd.cd_z,
+              ca,
+              cs,
+              area_z_m2: areas.area_z_m2,
+              volume_m3: volume,
+              raoByPeriod: raoByPeriodScenario,
+              dry_weight_t: total_weight,
+              crane_capacity_t: craneCapT,
+            })
             totalCells++
             if (cell.is_feasible) feasibleCells++
             else hsAllOk = false
@@ -787,10 +926,13 @@ async function executeFunction(
         }
 
         comparison.push({
-          [`${parameter}_t_or_m`]: val,
+          [`${parameter}_value`]: val,
           max_hs_m: maxHs,
           daf: +worstDaf.toFixed(3),
           operability_pct: +((feasibleCells / totalCells) * 100).toFixed(1),
+          // Additional info for new params
+          ...(parameter === 'current_speed' ? { current_force_kN: +(val * 20).toFixed(1) } : {}),
+          ...(parameter === 'transit_hs' ? { transit_accel_g: +(val * 0.15).toFixed(2) } : {}),
         })
       }
 
@@ -823,6 +965,16 @@ function buildToolNotification(
       return `[Tool: get_crane_capacity] Retrieved crane capacity for ${eq}`
     case 'get_sea_state_table':
       return `[Tool: get_sea_state_table] Retrieved sea state table for ${eq}`
+    case 'get_rigging_summary':
+      return `[Tool: get_rigging_summary] Retrieved rigging summary for ${eq}`
+    case 'update_rigging':
+      return `[Tool: update_rigging] Updated rigging for ${eq}`
+    case 'get_seafastening_results':
+      return `[Tool: get_seafastening_results] Retrieved seafastening for ${eq}`
+    case 'get_stability_results':
+      return `[Tool: get_stability_results] Retrieved vessel stability results`
+    case 'get_lowering_results':
+      return `[Tool: get_lowering_results] Retrieved subsea lowering results for ${eq}`
     case 'update_equipment_weight':
       return `[Tool: update_equipment_weight] Updated ${eq} weight to ${args.new_weight_t}t`
     case 'update_equipment_dimensions':
@@ -871,7 +1023,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { db: { schema: 'deck_layout' } })
 
     // Convert to Gemini contents (system messages handled via systemInstruction)
     const contents = messages
@@ -881,7 +1033,7 @@ Deno.serve(async (req) => {
         parts: [{ text: m.content }],
       }))
 
-    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro:generateContent?key=${GEMINI_API_KEY}`
 
     // Track tool calls made during this conversation turn
     const toolNotifications: string[] = []

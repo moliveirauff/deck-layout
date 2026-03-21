@@ -116,6 +116,7 @@ export const CaptureLayer = forwardRef<CaptureLayerApi, Props>(function CaptureL
   const overlayRef = useRef<HTMLDivElement>(null)
   const deckStageRef = useRef<KonvaStageRef>(null)
   const sceneCaptureRef = useRef<SceneCaptureApi>(null)
+  const loweringPlotEls = useRef<Map<string, HTMLDivElement | null>>(new Map())
 
   useImperativeHandle(ref, () => ({
     captureAll: async (): Promise<CapturedImages> => {
@@ -150,6 +151,14 @@ export const CaptureLayer = forwardRef<CaptureLayerApi, Props>(function CaptureL
         await new Promise(r => setTimeout(r, 500)) // allow one render cycle
         if (sceneCaptureRef.current) {
           images.view3d = sceneCaptureRef.current.capture()
+        }
+      }
+
+      if (sections.lowering) {
+        images.loweringPlot = {}
+        for (const [peId, el] of loweringPlotEls.current) {
+          const url = await captureEl(el)
+          if (url) images.loweringPlot[peId] = url
         }
       }
 
@@ -231,6 +240,32 @@ export const CaptureLayer = forwardRef<CaptureLayerApi, Props>(function CaptureL
           <StaticDeckStage data={data} stageRef={deckStageRef} />
         </div>
       )}
+
+      {/* Lowering Plot (Current Profile) */}
+      {sections.lowering && data.currentProfile.length > 0 && data.placed.map(pe => (
+        <div
+          key={pe.id}
+          ref={el => loweringPlotEls.current.set(pe.id, el)}
+          style={{ ...HIDE, width: '600px', padding: '16px' }}
+        >
+          <p style={{ fontSize: '12px', fontWeight: 600, marginBottom: '8px', color: '#1e3a8a' }}>
+            Current Profile — {pe.label ?? data.libById[pe.equipment_id]?.name}
+          </p>
+          <LineChart
+            width={555}
+            height={270}
+            data={[...data.currentProfile].sort((a, b) => a.depth_m - b.depth_m)}
+            layout="vertical"
+            margin={{ top: 5, right: 20, bottom: 30, left: 20 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis type="number" domain={[0, 'auto']} label={{ value: 'Speed (m/s)', position: 'insideBottom', offset: -15 }} />
+            <YAxis type="number" dataKey="depth_m" reversed label={{ value: 'Depth (m)', angle: -90, position: 'insideLeft', offset: 10 }} />
+            <Tooltip />
+            <Line type="monotone" dataKey="current_speed_ms" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 4 }} />
+          </LineChart>
+        </div>
+      ))}
 
       {/* Hidden 3D scene for screenshot */}
       {sections.view3d && (
