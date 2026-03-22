@@ -8,7 +8,11 @@ export const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? 'https://moliveirauff
  */
 export async function goto(page: Page, hash: string) {
   await page.goto(`${BASE_URL}/#${hash}`)
-  await page.waitForLoadState('networkidle')
+  // networkidle can hang on pages with multiple concurrent Supabase calls;
+  // fall back gracefully after 15s so the test can still assert the UI state.
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {
+    // page did not reach networkidle within 15s — continue anyway
+  })
 }
 
 /**

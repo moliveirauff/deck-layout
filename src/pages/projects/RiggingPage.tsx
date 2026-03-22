@@ -39,20 +39,19 @@ export default function RiggingPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
 
-  // ── Load data ─────────────────────────────────────────────────────────────
+  // ── Load data — coordinated Promise.all to avoid race conditions ──────────
   useEffect(() => {
     if (!projectId) return
-    void deckStore.loadProjectEquipment(projectId)
-  }, [projectId, deckStore])
-
-  useEffect(() => {
-    void equipStore.loadEquipment()
-  }, [equipStore])
-
-  useEffect(() => {
-    void riggingStore.loadItems()
-  }, [riggingStore])
+    setIsInitializing(true)
+    void Promise.all([
+      deckStore.loadProjectEquipment(projectId),
+      equipStore.loadEquipment(),
+      riggingStore.loadItems(),
+    ]).finally(() => setIsInitializing(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
 
   // ── When PE selection changes, load saved arrangement ────────────────────
   useEffect(() => {
@@ -133,7 +132,9 @@ export default function RiggingPage() {
   }
 
   // ── Loading states ────────────────────────────────────────────────────────
-  const isLoading = deckStore.isLoading || equipStore.isLoading || riggingStore.isLoading
+  // Use a single coordinated flag instead of combining individual store flags,
+  // which can flicker independently and cause race-condition re-renders.
+  const isLoading = isInitializing
 
   const peOptions = deckStore.items.map((pe) => {
     const eq = equipStore.items.find((e) => e.id === pe.equipment_id)
