@@ -147,7 +147,13 @@ export const CaptureLayer = forwardRef<CaptureLayerApi, Props>(function CaptureL
       }
 
       if (sections.deckLayout && deckStageRef.current) {
-        images.deckLayout = deckStageRef.current.toDataURL({ pixelRatio: 1.5 })
+        try {
+          const dataUrl = deckStageRef.current.toDataURL({ pixelRatio: 1.5 })
+          // Guard: toDataURL on a 0×0 canvas throws "drawImage: canvas element with a width or height of 0"
+          if (dataUrl && dataUrl.length > 100) images.deckLayout = dataUrl
+        } catch (err) {
+          console.warn('[CaptureLayer] Konva toDataURL failed (canvas may be 0×0) — skipping deck layout image:', err)
+        }
       }
 
       if (sections.view3d) {
