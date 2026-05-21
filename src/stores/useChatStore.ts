@@ -150,6 +150,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // when Gemini responds in Portuguese or with different phrasing.
     const mutatingTools = new Set([
       'move_equipment_on_deck',
+      'rotate_equipment_on_deck',
       'move_equipment_overboard',
       'update_equipment_weight',
       'update_equipment_dimensions',

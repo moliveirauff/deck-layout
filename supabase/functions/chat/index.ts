@@ -12,6 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '
 const SYSTEM_PROMPT = `You are DeckLayout Assistant, an AI helper for the DeckLayout offshore deck layout planning tool. \
 You help engineers analyze and modify equipment installation parameters, rigging, seafastening, stability, and subsea lowering. \
 When asked to make changes, use the available tools. \
+Weight and dimension updates automatically refresh derived checks and rerun splash-zone analysis when overboard crane data exists; summarize the impact from the tool result instead of calling the analysis tool again unless the user explicitly asks. \
 Always explain what you did and show the impact on results. \
 When comparing scenarios, present results in a clear table format. \
 You have deep knowledge of DNV-ST-N001 splash zone analysis, crane operations, rigging design (WLL, MBL, Sling angles), seafastening calculations, and vessel stability (GM, KG, Displacement). \
@@ -164,6 +165,18 @@ const TOOL_DECLARATIONS = [
         y: { type: 'NUMBER', description: 'New Y coordinate on deck in metres (port-to-starboard)' },
       },
       required: ['equipment_name', 'x', 'y'],
+    },
+  },
+  {
+    name: 'rotate_equipment_on_deck',
+    description: 'Rotate a piece of equipment on deck to a new heading angle in degrees.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        equipment_name: { type: 'STRING', description: 'Name or label of the equipment item' },
+        rotation_deg: { type: 'NUMBER', description: 'New deck rotation in degrees' },
+      },
+      required: ['equipment_name', 'rotation_deg'],
     },
   },
   {
@@ -560,6 +573,90 @@ async function runAnalysisForEquipment(
   }
 }
 
+function finiteNumber(value: unknown, field: string, options: { positive?: boolean } = {}) {
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) return { error: `${field} must be a finite number.` }
+  if (options.positive && n <= 0) return { error: `${field} must be greater than zero.` }
+  return { value: n }
+}
+
+function deckLoadCheck(
+  eq: Record<string, number | string>,
+  pe: Record<string, unknown>,
+  zones: Array<Record<string, number>>,
+) {
+  const length = Number(eq.length_m)
+  const width = Number(eq.width_m)
+  const weight = Number(eq.dry_weight_t)
+  const x = Number(pe.deck_pos_x)
+  const y = Number(pe.deck_pos_y)
+  if (![length, width, weight, x, y].every(Number.isFinite) || length <= 0 || width <= 0) return null
+
+  const pressure = weight / (length * width)
+  const zone = zones.find((z) =>
+    x >= Number(z.x_m) &&
+    x <= Number(z.x_m) + Number(z.length_m) &&
+    y >= Number(z.y_m) &&
+    y <= Number(z.y_m) + Number(z.width_m)
+  )
+  if (!zone || !Number.isFinite(Number(zone.capacity_t_per_m2))) return null
+  return pressure <= Number(zone.capacity_t_per_m2)
+}
+
+async function refreshDerivedChecksAndAnalysis(
+  supabase: SupabaseClient,
+  projectId: string,
+  found: { pe: Record<string, unknown>; eq: Record<string, number | string>; matchedName: string },
+) {
+  const { data: project } = await supabase
+    .from('project')
+    .select('vessel_snapshot')
+    .eq('id', projectId)
+    .single()
+
+  const zones = (project?.vessel_snapshot?.deck_load_zones ?? []) as Array<Record<string, number>>
+  const weight = Number(found.eq.dry_weight_t)
+  const deckCapacity = Number(found.pe.crane_capacity_deck_t)
+  const overboardCapacity = Number(found.pe.crane_capacity_overboard_t)
+
+  const checks: Record<string, unknown> = {
+    deck_load_ok: deckLoadCheck(found.eq, found.pe, zones),
+    capacity_check_deck_ok: Number.isFinite(deckCapacity) && deckCapacity > 0 && Number.isFinite(weight) ? deckCapacity >= weight : null,
+    capacity_check_overboard_ok: Number.isFinite(overboardCapacity) && overboardCapacity > 0 && Number.isFinite(weight) ? overboardCapacity >= weight : null,
+  }
+
+  await supabase.from('project_equipment').update(checks).eq('id', found.pe.id)
+
+  const shouldRunAnalysis = found.pe.overboard_pos_x != null && Number.isFinite(overboardCapacity) && overboardCapacity > 0
+  const analysis = shouldRunAnalysis
+    ? await runAnalysisForEquipment(supabase, projectId, found)
+    : { skipped: true, reason: 'No overboard position or crane capacity set.' }
+
+  return { checks, analysis }
+}
+
+function summarizeToolResults(rawToolResults: Array<{ name: string; result: Record<string, unknown> }>) {
+  if (!rawToolResults.length) return ''
+  const lastMutation = [...rawToolResults].reverse().find((r) => r.result?.success)
+  const analysis = [...rawToolResults].reverse().find((r) =>
+    r.name === 'run_splash_zone_analysis' ||
+    (r.result?.auto_analysis && typeof r.result.auto_analysis === 'object'),
+  )
+  const lines = ['Done.']
+  if (lastMutation) {
+    const equipment = lastMutation.result.equipment ? ` for ${lastMutation.result.equipment}` : ''
+    lines.push(`The requested action was executed successfully${equipment}.`)
+  }
+  const analysisResult = analysis?.name === 'run_splash_zone_analysis'
+    ? analysis.result
+    : (analysis?.result.auto_analysis as Record<string, unknown> | undefined)
+  if (analysisResult && !analysisResult.error && !analysisResult.skipped) {
+    lines.push(`Updated splash-zone analysis: max Hs = ${analysisResult.max_hs_m ?? '?'} m, DAF = ${analysisResult.daf ?? '?'}, operability = ${analysisResult.operability_pct ?? '?'}%.`)
+  }
+  if (analysisResult?.error) lines.push(`Analysis could not be refreshed automatically: ${analysisResult.error}`)
+  return lines.join('\n')
+}
+
 // ─── Tool dispatcher ───────────────────────────────────────────────────────────
 
 async function executeFunction(
@@ -871,61 +968,101 @@ async function executeFunction(
     case 'update_equipment_weight': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      const parsed = finiteNumber(args.new_weight_t, 'new_weight_t', { positive: true })
+      if ('error' in parsed) return { error: parsed.error }
+      const newWeight = parsed.value
       const { error } = await supabase
         .from('equipment_library')
-        .update({ dry_weight_t: args.new_weight_t })
+        .update({ dry_weight_t: newWeight })
         .eq('id', found.eq.id)
       if (error) return { error: error.message }
+      const updatedFound = { ...found, eq: { ...found.eq, dry_weight_t: newWeight } }
+      const postUpdate = await refreshDerivedChecksAndAnalysis(supabase, projectId, updatedFound)
       return {
         success: true, equipment: found.matchedName,
-        old_weight_t: found.eq.dry_weight_t, new_weight_t: args.new_weight_t,
-        note: 'Re-run splash zone analysis to see the updated DAF and operability.',
+        old_weight_t: found.eq.dry_weight_t, new_weight_t: newWeight,
+        checks: postUpdate.checks,
+        auto_analysis: postUpdate.analysis,
       }
     }
 
     case 'update_equipment_dimensions': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      const length = finiteNumber(args.length_m, 'length_m', { positive: true })
+      const width = finiteNumber(args.width_m, 'width_m', { positive: true })
+      const height = finiteNumber(args.height_m, 'height_m', { positive: true })
+      const parsedError = [length, width, height].find((v) => 'error' in v)
+      if (parsedError && 'error' in parsedError) return { error: parsedError.error }
       const { error } = await supabase
         .from('equipment_library')
-        .update({ length_m: args.length_m, width_m: args.width_m, height_m: args.height_m })
+        .update({ length_m: length.value, width_m: width.value, height_m: height.value })
         .eq('id', found.eq.id)
       if (error) return { error: error.message }
+      const updatedFound = { ...found, eq: { ...found.eq, length_m: length.value, width_m: width.value, height_m: height.value } }
+      const postUpdate = await refreshDerivedChecksAndAnalysis(supabase, projectId, updatedFound)
       return {
         success: true, equipment: found.matchedName,
         old: { length_m: found.eq.length_m, width_m: found.eq.width_m, height_m: found.eq.height_m },
-        new: { length_m: args.length_m, width_m: args.width_m, height_m: args.height_m },
-        note: 'Dimensions saved. Re-run analysis to recalculate hydrodynamic forces.',
+        new: { length_m: length.value, width_m: width.value, height_m: height.value },
+        checks: postUpdate.checks,
+        auto_analysis: postUpdate.analysis,
       }
     }
 
     case 'move_equipment_on_deck': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      const x = finiteNumber(args.x, 'x')
+      const y = finiteNumber(args.y, 'y')
+      if ('error' in x) return { error: x.error }
+      if ('error' in y) return { error: y.error }
       const { error } = await supabase
         .from('project_equipment')
-        .update({ deck_pos_x: args.x, deck_pos_y: args.y })
+        .update({ deck_pos_x: x.value, deck_pos_y: y.value })
         .eq('id', found.pe.id)
       if (error) return { error: error.message }
       return {
         success: true, equipment: found.matchedName,
         old_position: { x: found.pe.deck_pos_x, y: found.pe.deck_pos_y },
-        new_position: { x: args.x, y: args.y },
+        new_position: { x: x.value, y: y.value },
+      }
+    }
+
+    case 'rotate_equipment_on_deck': {
+      const found = await findEquipment(supabase, projectId, args.equipment_name as string)
+      if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      const rotation = finiteNumber(args.rotation_deg, 'rotation_deg')
+      if ('error' in rotation) return { error: rotation.error }
+      const normalized = ((rotation.value % 360) + 360) % 360
+      const { error } = await supabase
+        .from('project_equipment')
+        .update({ deck_rotation_deg: normalized })
+        .eq('id', found.pe.id)
+      if (error) return { error: error.message }
+      return {
+        success: true, equipment: found.matchedName,
+        old_rotation_deg: found.pe.deck_rotation_deg,
+        new_rotation_deg: normalized,
       }
     }
 
     case 'move_equipment_overboard': {
       const found = await findEquipment(supabase, projectId, args.equipment_name as string)
       if (!found) return { error: `Equipment "${args.equipment_name}" not found.` }
+      const x = finiteNumber(args.x, 'x')
+      const y = finiteNumber(args.y, 'y')
+      if ('error' in x) return { error: x.error }
+      if ('error' in y) return { error: y.error }
       const { error } = await supabase
         .from('project_equipment')
-        .update({ overboard_pos_x: args.x, overboard_pos_y: args.y })
+        .update({ overboard_pos_x: x.value, overboard_pos_y: y.value })
         .eq('id', found.pe.id)
       if (error) return { error: error.message }
       return {
         success: true, equipment: found.matchedName,
         old_position: found.pe.overboard_pos_x != null ? { x: found.pe.overboard_pos_x, y: found.pe.overboard_pos_y } : null,
-        new_position: { x: args.x, y: args.y },
+        new_position: { x: x.value, y: y.value },
       }
     }
 
@@ -1078,11 +1215,13 @@ function buildToolNotification(
     case 'get_lowering_results':
       return `[Tool: get_lowering_results] Retrieved subsea lowering results for ${eq}`
     case 'update_equipment_weight':
-      return `[Tool: update_equipment_weight] Updated ${eq} weight to ${args.new_weight_t}t`
+      return `[Tool: update_equipment_weight] Updated ${eq} weight to ${args.new_weight_t}t${result.auto_analysis && !(result.auto_analysis as Record<string, unknown>).skipped ? ' and refreshed splash-zone analysis' : ''}`
     case 'update_equipment_dimensions':
-      return `[Tool: update_equipment_dimensions] Updated dimensions for ${eq}`
+      return `[Tool: update_equipment_dimensions] Updated dimensions for ${eq}${result.auto_analysis && !(result.auto_analysis as Record<string, unknown>).skipped ? ' and refreshed splash-zone analysis' : ''}`
     case 'move_equipment_on_deck':
       return `[Tool: move_equipment_on_deck] Moved ${eq} to (${args.x}, ${args.y}) on deck`
+    case 'rotate_equipment_on_deck':
+      return `[Tool: rotate_equipment_on_deck] Rotated ${eq} to ${args.rotation_deg}° on deck`
     case 'move_equipment_overboard':
       return `[Tool: move_equipment_overboard] Set overboard position for ${eq}`
     case 'run_splash_zone_analysis':
@@ -1176,8 +1315,9 @@ Deno.serve(async (req) => {
       if (!fnCallPart) {
         // Final text response — no more function calls
         const text = parts.find((p) => p.text)
+        const responseText = ((text?.text as string) ?? '').trim() || summarizeToolResults(rawToolResults)
         return new Response(
-          JSON.stringify({ response: (text?.text as string) ?? '', toolNotifications, rawToolResults }),
+          JSON.stringify({ response: responseText, toolNotifications, rawToolResults }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
