@@ -13,28 +13,22 @@ export const DECK_HEIGHT = 10   // m above waterline
 export const BULWARK_H = 1.5    // m — raised edge height
 export const BULWARK_W = 0.3    // m — bulwark wall thickness
 
-/** Map a deck (x, y) coordinate to a Three.js [X, Y, Z] world position. */
-export function toScene(x: number, y: number, heightAboveDeck = 0): [number, number, number] {
+/** Map a world/overboard (x, y) coordinate to a Three.js [X, Y, Z] position. */
+export function toSceneWorld(x: number, y: number, heightAboveDeck = 0): [number, number, number] {
   return [x, DECK_HEIGHT + heightAboveDeck, y]
 }
 
 /**
- * Compute the hook world position from crane pedestal and boom geometry.
- * Returns [hookX, hookY, hookZ] in Three.js world space.
+ * Map an on-deck (x, y) coordinate to Three.js.
+ *
+ * Deck objects must match the 2D deck canvas orientation, where data Y is
+ * rendered as `deckWidth - y`. Overboard points remain in world coordinates.
  */
-export function hookPosition(
-  pedestalX: number,
-  pedestalY: number,
-  pedestalH: number,
-  radiusM: number,
-  slewDeg: number,
-  boomAngleDeg: number,
-  boomLengthM: number,
+export function toSceneDeck(
+  x: number,
+  y: number,
+  deckWidth: number,
+  heightAboveDeck = 0,
 ): [number, number, number] {
-  const slewRad = (slewDeg * Math.PI) / 180
-  const boomRad = (boomAngleDeg * Math.PI) / 180
-  const hx = pedestalX + radiusM * Math.cos(slewRad)
-  const hz = pedestalY + radiusM * Math.sin(slewRad)
-  const hy = DECK_HEIGHT + pedestalH + boomLengthM * Math.sin(boomRad)
-  return [hx, hy, hz]
+  return [x, DECK_HEIGHT + heightAboveDeck, deckWidth - y]
 }

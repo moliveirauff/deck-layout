@@ -115,6 +115,7 @@ export function Scene({ vessel, barriers, deckLoadZones, placed, libById, active
                 eq={eq}
                 viewMode={viewMode}
                 showLabels={toggles.labels}
+                deckWidth={vessel.deck_width_m}
               />
             )
           })}

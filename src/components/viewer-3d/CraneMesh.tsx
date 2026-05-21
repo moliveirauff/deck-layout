@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { useMemo } from 'react'
 import type { Vessel, ProjectEquipment } from '../../types/database'
-import { DECK_HEIGHT, hookPosition } from './sceneHelpers'
+import { DECK_HEIGHT, toSceneDeck, toSceneWorld } from './sceneHelpers'
 import type { ViewMode } from './EquipmentMesh'
 
 type Props = {
@@ -51,6 +51,8 @@ function CylinderBetween({
 export function CraneMesh({ vessel, activePe, viewMode }: Props) {
   const px = vessel.crane_pedestal_x
   const py = vessel.crane_pedestal_y
+  const pedestalScene = toSceneDeck(px, py, vessel.deck_width_m)
+  const pz = pedestalScene[2]
   const ph = vessel.crane_pedestal_height_m
   const boomLen = vessel.crane_boom_length_m
 
@@ -61,13 +63,27 @@ export function CraneMesh({ vessel, activePe, viewMode }: Props) {
   const boomDeg    = useOverboard ? (activePe?.crane_boom_angle_overboard_deg ?? 30) : (activePe?.crane_boom_angle_deck_deg ?? 30)
   const radiusM    = useOverboard ? (activePe?.crane_radius_overboard_m ?? 20)    : (activePe?.crane_radius_deck_m ?? 20)
 
-  const pedestalTop: [number, number, number] = [px, DECK_HEIGHT + ph, py]
-  const hook = hookPosition(px, py, ph, radiusM, slewDeg, boomDeg, boomLen)
+  const targetScene = useOverboard && activePe?.overboard_pos_x != null && activePe?.overboard_pos_y != null
+    ? toSceneWorld(activePe.overboard_pos_x, activePe.overboard_pos_y)
+    : activePe
+      ? toSceneDeck(activePe.deck_pos_x, activePe.deck_pos_y, vessel.deck_width_m)
+      : null
+
+  const boomRad = (boomDeg * Math.PI) / 180
+  const fallbackSlewRad = (-slewDeg * Math.PI) / 180
+  const pedestalTop: [number, number, number] = [px, DECK_HEIGHT + ph, pz]
+  const hook: [number, number, number] = targetScene
+    ? [targetScene[0], DECK_HEIGHT + ph + boomLen * Math.sin(boomRad), targetScene[2]]
+    : [
+        px + radiusM * Math.cos(fallbackSlewRad),
+        DECK_HEIGHT + ph + boomLen * Math.sin(boomRad),
+        pz + radiusM * Math.sin(fallbackSlewRad),
+      ]
 
   return (
     <group>
       {/* Pedestal cylinder */}
-      <mesh position={[px, DECK_HEIGHT + ph / 2, py]} castShadow>
+      <mesh position={[px, DECK_HEIGHT + ph / 2, pz]} castShadow>
         <cylinderGeometry args={[1.5, 1.8, ph, 16]} />
         <meshStandardMaterial color="#444850" roughness={0.5} metalness={0.6} />
       </mesh>

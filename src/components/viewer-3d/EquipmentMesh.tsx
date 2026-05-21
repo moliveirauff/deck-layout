@@ -1,6 +1,6 @@
 import { Html, Line } from '@react-three/drei'
 import type { ProjectEquipment, EquipmentLibrary } from '../../types/database'
-import { toScene, DECK_HEIGHT } from './sceneHelpers'
+import { toSceneDeck, toSceneWorld, DECK_HEIGHT } from './sceneHelpers'
 
 export type ViewMode = 'deck' | 'overboard' | 'both'
 
@@ -9,6 +9,7 @@ type Props = {
   eq: EquipmentLibrary
   viewMode: ViewMode
   showLabels: boolean
+  deckWidth: number
 }
 
 function EquipGeometry({ eq }: { eq: EquipmentLibrary }) {
@@ -40,17 +41,17 @@ function getColorForId(id: string) {
   return colors[Math.abs(hash) % colors.length]
 }
 
-export function EquipmentMesh({ pe, eq, viewMode, showLabels }: Props) {
+export function EquipmentMesh({ pe, eq, viewMode, showLabels, deckWidth }: Props) {
   const h2 = eq.height_m / 2
-  const deckPos = toScene(pe.deck_pos_x, pe.deck_pos_y, h2)
-  const rotY = -(pe.deck_rotation_deg * Math.PI) / 180
+  const deckPos = toSceneDeck(pe.deck_pos_x, pe.deck_pos_y, deckWidth, h2)
+  const rotY = (pe.deck_rotation_deg * Math.PI) / 180
 
   const hasOverboard =
     pe.overboard_pos_x != null &&
     pe.overboard_pos_y != null
 
   const obPos = hasOverboard
-    ? toScene(pe.overboard_pos_x!, pe.overboard_pos_y!, h2)
+    ? toSceneWorld(pe.overboard_pos_x!, pe.overboard_pos_y!, h2)
     : null
 
   const showDeck   = viewMode === 'deck'   || viewMode === 'both'
