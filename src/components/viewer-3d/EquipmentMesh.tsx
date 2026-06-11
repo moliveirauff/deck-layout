@@ -32,13 +32,24 @@ function EquipMaterial({ color, wireframe, opacity = 1 }: { color: string; wiref
   )
 }
 
+// Paleta industrial fixa — 8 cores sóbrias de equipamento offshore
+const INDUSTRIAL_COLORS = [
+  '#d9a514', // amarelo segurança
+  '#c2632a', // laranja industrial
+  '#4a6b8a', // azul aço
+  '#7d8489', // cinza equipamento
+  '#4f6b50', // verde máquina
+  '#8a3b2e', // vermelho óxido
+  '#d8d5cd', // branco sujo
+  '#3e7d80', // teal
+]
+
 function getColorForId(id: string) {
-  const colors = ['#eab308', '#3b82f6', '#ef4444', '#10b981', '#f97316', '#8b5cf6', '#06b6d4']
   let hash = 0
   for (let i = 0; i < id.length; i++) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash)
   }
-  return colors[Math.abs(hash) % colors.length]
+  return INDUSTRIAL_COLORS[Math.abs(hash) % INDUSTRIAL_COLORS.length]
 }
 
 export function EquipmentMesh({ pe, eq, viewMode, showLabels, deckWidth }: Props) {

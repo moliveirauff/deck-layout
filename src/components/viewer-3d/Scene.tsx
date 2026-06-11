@@ -1,6 +1,6 @@
 import { Suspense, useState, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { Grid } from '@react-three/drei'
+import { Grid, Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import { DeckMesh } from './DeckMesh'
 import { EquipmentMesh, type ViewMode } from './EquipmentMesh'
@@ -84,14 +84,15 @@ export function Scene({ vessel, barriers, deckLoadZones, placed, libById, active
         style={{ width: '100%', height: '100%' }}
       >
         <CameraUpdater preset={preset} cx={cx} cz={cz} />
-        {/* Sky */}
-        <color attach="background" args={['#c8dff5']} />
-        <fog attach="fog" args={['#c8dff5', 200, 600]} />
+        {/* Céu procedural (drei Sky — shader local, sem assets externos) */}
+        <color attach="background" args={['#b6cfe2']} />
+        <Sky distance={450000} sunPosition={[100, 60, 40]} turbidity={5} rayleigh={1.5} mieCoefficient={0.004} mieDirectionalG={0.85} />
+        <fog attach="fog" args={['#b6cfe2', 220, 700]} />
 
-        {/* Lighting */}
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[100, 200, 60]} intensity={1.2} castShadow shadow-mapSize={[2048, 2048]} />
-        <hemisphereLight args={['#c8dff5', '#444444', 0.4]} />
+        {/* Iluminação coerente com a posição do sol do Sky */}
+        <ambientLight intensity={0.45} />
+        <directionalLight position={[100, 120, 48]} intensity={1.5} color="#fff4e0" castShadow shadow-mapSize={[2048, 2048]} />
+        <hemisphereLight args={['#bcd9ee', '#2e3d46', 0.5]} />
 
         <Suspense fallback={<mesh><boxGeometry args={[1,1,1]} /><meshStandardMaterial color="#94a3b8" /></mesh>}>
           {/* Deck + barriers + load zones */}
@@ -139,11 +140,11 @@ export function Scene({ vessel, barriers, deckLoadZones, placed, libById, active
             />
           )}
 
-          {/* Water surface */}
+          {/* Superfície da água — azul-oceano profundo, estática (sem custo de animação) */}
           {toggles.water && (
             <mesh position={[cx, 0, cz]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
               <planeGeometry args={[1000, 1000]} />
-              <meshStandardMaterial color="#228b7e" transparent opacity={0.6} roughness={0.1} metalness={0.1} />
+              <meshStandardMaterial color="#0d4f6e" transparent opacity={0.92} roughness={0.35} metalness={0.1} />
             </mesh>
           )}
         </Suspense>
