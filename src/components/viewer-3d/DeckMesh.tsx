@@ -2,6 +2,7 @@ import { Html } from '@react-three/drei'
 import type { Vessel, VesselBarrier, DeckLoadZone } from '../../types/database'
 import { toSceneDeck } from './sceneHelpers'
 import { HullMesh } from './HullMesh'
+import { SuperstructureMesh } from './SuperstructureMesh'
 
 type Props = {
   vessel: Vessel
@@ -15,11 +16,19 @@ type Props = {
 export function DeckMesh({ vessel, barriers, deckLoadZones, showBarriers, showLoadZones, showLabels }: Props) {
   const L = vessel.deck_length_m
   const W = vessel.deck_width_m
+  // Espaço visual de casco entre o fim do deck e a proa, derivado do LBP quando
+  // disponível (v2). Sem LBP, o casco mantém o envelope do deck (como antes).
+  const bowExtension = vessel.lbp_m != null && vessel.lbp_m > L + vessel.deck_origin_x
+    ? Math.min(vessel.lbp_m - L - vessel.deck_origin_x, L)
+    : 0
 
   return (
     <group>
-      {/* Vessel hull — volumetric shape with tapered bow, red bottom, grey top, bulwarks */}
-      <HullMesh length={L} width={W} />
+      {/* Casco volumétrico — planta com curvas, antifouling, boot-top, costado e bulwarks */}
+      <HullMesh length={L} width={W} bowExtension={bowExtension} />
+
+      {/* Superestrutura de acomodações na proa (apenas visual) */}
+      <SuperstructureMesh deckLength={L} deckWidth={W} bowExtension={bowExtension} />
 
       {/* Barriers */}
       {showBarriers && barriers.map((b) => (

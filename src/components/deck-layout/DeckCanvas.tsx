@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useMemo } from 'react'
-import { Stage, Layer, Rect, Ellipse, Circle, Line, Arrow, Text, Shape, Group, Path, Arc } from 'react-konva'
+import { Stage, Layer, Rect, Ellipse, Circle, Line, Arrow, Text, Shape, Group, Arc } from 'react-konva'
 import { useDeckTransform } from '../../hooks/useDeckTransform'
+import { DeckScenery } from './DeckScenery'
 import type { VesselBarrier, DeckLoadZone, CraneCurvePoint, Vessel, ProjectEquipment, EquipmentLibrary } from '../../types/database'
 import type { ValidationResult } from '../../lib/calculations/deckValidation'
 import type { CraneToggle } from '../../stores/useCraneStore'
@@ -57,14 +58,6 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
   const wy = (y: number) => oy + (deckW - y) * bs
   const fz = Math.max(7, Math.min(11, bs * 0.9))
 
-  const gridLines = useMemo(() => {
-    if (!showGrid || deckL <= 0) return []
-    const lines: number[][] = []
-    for (let x = 0; x <= deckL; x += 5) lines.push([wx(x), wy(0), wx(x), wy(deckW)])
-    for (let y = 0; y <= deckW; y += 5) lines.push([wx(0), wy(y), wx(deckL), wy(y)])
-    return lines
-  }, [showGrid, deckL, deckW, tf]) // eslint-disable-line react-hooks/exhaustive-deps
-
   const maxR = useMemo(() => {
     const rs = craneCurve.map((p) => p.radius_m).filter((r) => r > 0)
     return rs.length ? Math.max(...rs) : 0
@@ -108,30 +101,13 @@ export const DeckCanvas = forwardRef<DeckCanvasHandle, Props>(function DeckCanva
     onDrop(equipId, (sx - ox) / bs, deckW - (sy - oy) / bs)
   }
 
-  // SVG path string for realistic hull
-  const hullPathData = useMemo(() => {
-    if (deckL <= 0 || deckW <= 0) return ''
-    const straightEnd = deckL * 0.8
-    return `M ${wx(0)} ${wy(0)} L ${wx(0)} ${wy(deckW)} L ${wx(straightEnd)} ${wy(deckW)} L ${wx(deckL)} ${wy(deckW / 2)} L ${wx(straightEnd)} ${wy(0)} Z`
-  }, [deckL, deckW, wx, wy])
-
   return (
-    <div ref={containerRef} className="h-full w-full overflow-hidden bg-blue-300" onDragOver={(e) => e.preventDefault()} onDrop={handleCanvasDrop}>
+    <div ref={containerRef} className="h-full w-full overflow-hidden bg-[#1e5f8a]" onDragOver={(e) => e.preventDefault()} onDrop={handleCanvasDrop}>
       <Stage ref={stageRef} width={size.w} height={size.h} draggable onWheel={handleWheel}
         onClick={(e) => { if (e.target === e.target.getStage()) onSelect(null) }}>
         <Layer>
-          {/* Ocean Background - infinite blue */}
-          <Rect
-            x={-5000} y={-5000}
-            width={10000} height={10000}
-            fill="#93c5fd" listening={false}
-          />
-
-          {/* Grid */}
-          {gridLines.map((pts, i) => <Line key={i} points={pts} stroke="#e5e7eb" strokeWidth={0.5} listening={false} />)}
-
-          {/* Realistic Hull */}
-          {deckL > 0 && <Path data={hullPathData} fill="#e2e8f0" stroke="#374151" strokeWidth={2} listening={false} shadowColor="black" shadowBlur={15} shadowOpacity={0.2} shadowOffset={{x: 0, y: 5}} />}
+          {/* Cenário: água, casco, plating, grid, bulwark, linha de centro, BOW/STERN */}
+          <DeckScenery deckL={deckL} deckW={deckW} bs={bs} wx={wx} wy={wy} showGrid={showGrid} />
 
           {/* Load zones */}
           {zones.map((z) => <Group key={z.id} listening={false}>

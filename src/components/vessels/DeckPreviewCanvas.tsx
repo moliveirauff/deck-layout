@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
-import { Stage, Layer, Rect, Circle, Line, Arrow, Text, Shape, Group } from 'react-konva'
+import { Stage, Layer, Rect, Circle, Arrow, Text, Shape, Group } from 'react-konva'
 import { useDeckTransform } from '../../hooks/useDeckTransform'
+import { DeckScenery } from '../deck-layout/DeckScenery'
 import type { VesselFormState, BarrierRow, ZoneRow, CraneRow } from '../../hooks/useVesselEditor'
 
 type Props = {
@@ -24,18 +25,6 @@ export function DeckPreviewCanvas({ values, barriers, zones, cranePoints }: Prop
   const deckW = parseFloat(values.deck_width_m) || 0
   const { containerRef, stageRef, size, tf, handleWheel } = useDeckTransform(deckL, deckW)
   const { wx, wy } = makeTransform(deckW, tf.bs, tf.ox, tf.oy)
-
-  // ── Grid lines (every 5 m) ──────────────────────────────────────────────────
-  const gridLines = useMemo(() => {
-    if (deckL <= 0 || deckW <= 0) return []
-    const { bs, ox, oy } = tf
-    const lwx = (x: number) => ox + x * bs
-    const lwy = (y: number) => oy + (deckW - y) * bs
-    const lines: number[][] = []
-    for (let x = 0; x <= deckL; x += 5) lines.push([lwx(x), lwy(0), lwx(x), lwy(deckW)])
-    for (let y = 0; y <= deckW; y += 5) lines.push([lwx(0), lwy(y), lwx(deckL), lwy(y)])
-    return lines
-  }, [deckL, deckW, tf])
 
   // ── Crane data ──────────────────────────────────────────────────────────────
   const pX = parseFloat(values.crane_pedestal_x) || 0
@@ -79,16 +68,8 @@ export function DeckPreviewCanvas({ values, barriers, zones, cranePoints }: Prop
         onWheel={handleWheel}
       >
         <Layer>
-          {/* Grid */}
-          {gridLines.map((pts, i) => (
-            <Line key={i} points={pts} stroke="#e5e7eb" strokeWidth={0.5} listening={false} />
-          ))}
-
-          {/* Deck outline */}
-          {deckL > 0 && (
-            <Rect x={wx(0)} y={wy(deckW)} width={deckL * tf.bs} height={deckW * tf.bs}
-              fill="#d1d5db" stroke="#374151" strokeWidth={2} listening={false} />
-          )}
+          {/* Cenário: água, casco com curvas, plating, grid, bulwark, linha de centro */}
+          <DeckScenery deckL={deckL} deckW={deckW} bs={tf.bs} wx={wx} wy={wy} showGrid />
 
           {/* Deck load zones */}
           {zoneRects.map((r) => r && (
