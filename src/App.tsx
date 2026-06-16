@@ -9,7 +9,7 @@ import VesselEditorPage from './pages/vessels/VesselEditorPage'
 import EquipmentListPage from './pages/equipment/EquipmentListPage'
 import EquipmentEditorPage from './pages/equipment/EquipmentEditorPage'
 
-// Rigging pages
+// Rigging library pages (kept — global library, not the per-project tab)
 import RiggingListPage from './pages/rigging/RiggingListPage'
 import RiggingEditorPage from './pages/rigging/RiggingEditorPage'
 
@@ -19,13 +19,9 @@ import NewProjectPage from './pages/projects/NewProjectPage'
 import ProjectWorkspace from './pages/projects/ProjectWorkspace'
 import ProjectOverviewPage from './pages/projects/ProjectOverviewPage'
 import DeckLayoutPage from './pages/projects/DeckLayoutPage'
-import RiggingPage from './pages/projects/RiggingPage'
 import SeaFasteningPage from './pages/projects/SeaFasteningPage'
 import StabilityPage from './pages/projects/StabilityPage'
-import LoweringPage from './pages/projects/LoweringPage'
-import AnalysisPage from './pages/projects/AnalysisPage'
-import RaoPage from './pages/projects/RaoPage'
-import WeatherPage from './pages/projects/WeatherPage'
+import InstallationPage from './pages/projects/InstallationPage'
 import Viewer3DPage from './pages/projects/Viewer3DPage'
 import ReportPage from './pages/projects/ReportPage'
 
@@ -60,15 +56,15 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectWorkspace />}>
             <Route index element={<ProjectOverviewPage />} />
             <Route path="deck" element={<DeckLayoutPage />} />
-            <Route path="rigging" element={<RiggingPage />} />
             <Route path="seafastening" element={<SeaFasteningPage />} />
             <Route path="stability" element={<StabilityPage />} />
-            <Route path="rao" element={<RaoPage />} />
-            <Route path="analysis" element={<AnalysisPage />} />
-            <Route path="weather" element={<WeatherPage />} />
-            <Route path="lowering" element={<LoweringPage />} />
+            <Route path="installation" element={<InstallationPage />} />
             <Route path="3d" element={<Viewer3DPage />} />
             <Route path="report" element={<ReportPage />} />
+            {/* Legacy redirects — old links/bookmarks */}
+            <Route path="analysis" element={<Navigate to="../installation" replace relative="path" />} />
+            <Route path="lowering" element={<Navigate to="../installation" replace relative="path" />} />
+            <Route path="weather" element={<Navigate to="../installation" replace relative="path" />} />
           </Route>
         </Route>
       </Routes>
