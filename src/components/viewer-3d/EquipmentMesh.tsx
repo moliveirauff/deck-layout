@@ -62,7 +62,7 @@ export function EquipmentMesh({ pe, eq, viewMode, showLabels, deckWidth }: Props
     pe.overboard_pos_y != null
 
   const obPos = hasOverboard
-    ? toSceneWorld(pe.overboard_pos_x!, pe.overboard_pos_y!, h2)
+    ? toSceneWorld(pe.overboard_pos_x!, pe.overboard_pos_y!, deckWidth, h2)
     : null
 
   const showDeck   = viewMode === 'deck'   || viewMode === 'both'
