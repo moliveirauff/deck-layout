@@ -64,12 +64,15 @@ export function CraneMesh({ vessel, activePe, viewMode }: Props) {
   const radiusM    = useOverboard ? (activePe?.crane_radius_overboard_m ?? 20)    : (activePe?.crane_radius_deck_m ?? 20)
 
   const targetScene = useOverboard && activePe?.overboard_pos_x != null && activePe?.overboard_pos_y != null
-    ? toSceneWorld(activePe.overboard_pos_x, activePe.overboard_pos_y)
+    ? toSceneWorld(activePe.overboard_pos_x, activePe.overboard_pos_y, vessel.deck_width_m)
     : activePe
       ? toSceneDeck(activePe.deck_pos_x, activePe.deck_pos_y, vessel.deck_width_m)
       : null
 
   const boomRad = (boomDeg * Math.PI) / 180
+  // Slew is measured in data-space (port = +Y). The 3D scene flips data Y →
+  // -Z, so the lateral component of the fallback hook must follow the same
+  // flip — otherwise the boom points to the opposite side of the vessel.
   const fallbackSlewRad = (-slewDeg * Math.PI) / 180
   const pedestalTop: [number, number, number] = [px, DECK_HEIGHT + ph, pz]
   const hook: [number, number, number] = targetScene
@@ -77,7 +80,7 @@ export function CraneMesh({ vessel, activePe, viewMode }: Props) {
     : [
         px + radiusM * Math.cos(fallbackSlewRad),
         DECK_HEIGHT + ph + boomLen * Math.sin(boomRad),
-        pz + radiusM * Math.sin(fallbackSlewRad),
+        pz - radiusM * Math.sin(fallbackSlewRad),
       ]
 
   return (
