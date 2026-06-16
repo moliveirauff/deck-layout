@@ -37,8 +37,11 @@ function segmentsToPath<T extends THREE.Path>(segments: HullSegment[], target: T
   return target
 }
 
-export function HullMesh({ length: L, width: W, bowExtension = 0 }: Props) {
-  const hullLen = L + Math.max(0, bowExtension)
+export function HullMesh({ length: L, width: W, bowExtension: _bowExtension = 0 }: Props) {
+  // Unificação proa 2D ↔ 3D: a planta 3D do casco usa o mesmo comprimento de deck
+  // que a planta 2D (deckL). A bowExtension (gap deck→LBP) deixa de esticar o casco
+  // — fica disponível para SuperstructureMesh posicionar acomodações na proa.
+  const hullLen = L
 
   const { shape, bulwarkShape } = useMemo(() => {
     const box = { x0: 0, x1: hullLen, y0: 0, y1: W }
